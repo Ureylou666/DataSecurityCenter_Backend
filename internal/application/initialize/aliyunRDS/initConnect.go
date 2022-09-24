@@ -15,9 +15,9 @@ import (
 	util "github.com/alibabacloud-go/tea-utils/service"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 )
 
+/*
 func InitRDSData(Group string) int {
 	// 清空数据库中该项目组数据
 	//model.RestoreData(Group)
@@ -25,7 +25,7 @@ func InitRDSData(Group string) int {
 	AccessKey := viper.GetString(Group + ".AccessKey")
 	AccessSecret := viper.GetString(Group + ".AccessSecret")
 	//打开client
-	Client, _err := CreateClient(tea.String(AccessKey), tea.String(AccessSecret))
+	Client, _err := aliyunSDK.CreateClient(tea.String(AccessKey), tea.String(AccessSecret))
 	//初始化RDS实例列表
 	initDescribeRDSInstances(Group, Client)
 	if _err != nil {
@@ -34,6 +34,7 @@ func InitRDSData(Group string) int {
 		return 200
 	}
 }
+*/
 
 // CreateClient 创建连接客户端
 func CreateClient(accessKeyId *string, accessKeySecret *string) (_result *rds20140815.Client, _err error) {

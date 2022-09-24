@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Backend/internal/application/init/aliyunRDS"
+	"Backend/internal/application/initialize"
 	"Backend/internal/model"
 )
 
@@ -12,6 +12,6 @@ func main() {
 	//model.RestoreData()
 	// 获取初始化数据
 	//aliyunSDDP.Entry("ISDP")
-	aliyunRDS.InitRDSData("ISDP")
+	initialize.InitCloudAccountList()
 	//	router.InitRouter()
 }

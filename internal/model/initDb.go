@@ -24,7 +24,7 @@ func InitDb() {
 	if err != nil {
 		fmt.Println("连接数据库失败，请检查参数", err)
 	}
-	db.AutoMigrate(&DataInventory{}, &DataColumn{}, &DataRules{}, &DevGroup{}, &DataTable{}, &DatabaseAccount{})
+	db.AutoMigrate(&DataInventory{}, &DataColumn{}, &DataRules{}, &DevGroup{}, &DataTable{}, &DatabaseAccount{}, &CloudAccount{})
 	// 连接池配置
 	//sqlDB, _ := db.DB()
 	// SetMaxIdleConns 设置空闲连接池中连接的最大数量

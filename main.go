@@ -1,8 +1,9 @@
 package main
 
 import (
-	"Backend/internal/application/initialize"
+	"Backend/internal/application/Basic"
 	"Backend/internal/model"
+	"fmt"
 )
 
 func main() {
@@ -12,6 +13,11 @@ func main() {
 	//model.RestoreData()
 	// 获取初始化数据
 	//aliyunSDDP.Entry("ISDP")
-	initialize.InitCloudAccountList()
+	//Basic.InitCloudAccountList()
+	//model.GetCloudAccount("")
+	//Basic.UpdateCloudAccountList()
+	ErrCode, ErrMsg := Basic.UpdateRDS("")
+	fmt.Println(ErrCode, ":  ", ErrMsg)
+	//model.DeleteInventory("rm-uf6ys93126n35orln")
 	//	router.InitRouter()
 }

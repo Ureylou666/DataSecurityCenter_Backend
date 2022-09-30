@@ -2,8 +2,8 @@ package router
 
 import (
 	"Backend/api/v1"
-	"Backend/internal/application/setting"
 	"Backend/internal/middleware"
+	"Backend/internal/utils/setting"
 	"github.com/gin-gonic/gin"
 )
 

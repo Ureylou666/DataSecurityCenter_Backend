@@ -11,49 +11,83 @@ aliyun RDS 相关sdk接口
 */
 
 import (
-	"Backend/internal/application/setting"
+	"Backend/internal/utils/Errmsg"
+	"Backend/internal/utils/setting"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/client"
 	rds20140815 "github.com/alibabacloud-go/rds-20140815/v2/client"
 	util "github.com/alibabacloud-go/tea-utils/service"
 	"github.com/alibabacloud-go/tea/tea"
 )
 
-// CreateClient 创建连接客户端
-func CreateRDSClient(accessKeyId *string, accessKeySecret *string) (_result *rds20140815.Client, _err error) {
+// CreateRDSClient 创建RDS连接客户端
+func CreateRDSClient(accountId string) (ErrCode int, ErrMessage error, client *rds20140815.Client) {
+	// 获取临时STS token
+	previousCode, previousMsg, AccessKeyId, AccessKeySecret, SecurityToken := AssumeRole(accountId)
+	if previousCode != Errmsg.SUCCESS {
+		return previousCode, previousMsg, nil
+	}
+	// 成功获取临时AK SK
 	config := &openapi.Config{
 		// 您的 AccessKey ID
-		AccessKeyId: accessKeyId,
+		AccessKeyId: tea.String(AccessKeyId),
 		// 您的 AccessKey Secret
-		AccessKeySecret: accessKeySecret,
+		AccessKeySecret: tea.String(AccessKeySecret),
+		// 您的 AccessToken
+		SecurityToken: tea.String(SecurityToken),
 	}
 	// 访问的域名
 	config.Endpoint = tea.String("rds.aliyuncs.com")
-	_result = &rds20140815.Client{}
-	_result, _err = rds20140815.NewClient(config)
-	return _result, _err
+	client = &rds20140815.Client{}
+	client, ErrMessage = rds20140815.NewClient(config)
+	// 错误判断
+	if ErrMessage != nil {
+		return Errmsg.ErrorCreateRDSClient, ErrMessage, nil
+	} else {
+		return Errmsg.SUCCESS, nil, client
+	}
 }
 
 // DescribeRDSInstances 查询项目组RDS实例列表
-func DescribeRDSInstances(client *rds20140815.Client) []*rds20140815.DescribeDBInstancesResponseBodyItemsDBInstance {
+func DescribeRDSInstances(client *rds20140815.Client) (ErrCode int, ErrMessage error, RDSInstanceList []*rds20140815.DescribeDBInstancesResponseBodyItemsDBInstance) {
 	describeDBInstancesRequest := &rds20140815.DescribeDBInstancesRequest{
 		RegionId:   tea.String("cn-shanghai"), // 目前默认都在cn-shanghai
 		PageSize:   tea.Int32(100),
 		PageNumber: tea.Int32(1),
 	}
-	describeDBInstancesResponse, _ := client.DescribeDBInstances(describeDBInstancesRequest)
-	return describeDBInstancesResponse.Body.Items.DBInstance
+	describeDBInstancesResponse, ErrMessage := client.DescribeDBInstances(describeDBInstancesRequest)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeRDSInstances, ErrMessage, nil
+	}
+	return Errmsg.SUCCESS, nil, describeDBInstancesResponse.Body.Items.DBInstance
+}
+
+// DescribeDBInstanceAttribute 查询RDS实例的详细信息
+func DescribeDBInstanceAttribute(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, DBInstanceDetail *rds20140815.DescribeDBInstanceAttributeResponseBodyItemsDBInstanceAttribute) {
+	describeDBInstanceAttributeRequest := &rds20140815.DescribeDBInstanceAttributeRequest{
+		DBInstanceId: tea.String(InstanceId),
+	}
+	runtime := &util.RuntimeOptions{}
+	describeDBInstanceAttributeResponse, ErrMessage := client.DescribeDBInstanceAttributeWithOptions(describeDBInstanceAttributeRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.DescribeDBInstanceAttribute, ErrMessage, nil
+	}
+	// 默认一个.
+	return Errmsg.SUCCESS, nil, describeDBInstanceAttributeResponse.Body.Items.DBInstanceAttribute[0]
 }
 
 // DescribeRDSAccount 查询实例的账号信息
-func DescribeRDSAccount(DBInstanceId string, client *rds20140815.Client) []*rds20140815.DescribeAccountsResponseBodyAccountsDBInstanceAccount {
+func DescribeRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, RDSAccountList []*rds20140815.DescribeAccountsResponseBodyAccountsDBInstanceAccount) {
 	describeAccountsRequest := &rds20140815.DescribeAccountsRequest{
-		DBInstanceId: tea.String(DBInstanceId),
+		DBInstanceId: tea.String(InstanceId),
 		PageSize:     tea.Int32(200),
 		PageNumber:   tea.Int32(1),
 	}
 	runtime := &util.RuntimeOptions{}
-	describeAccountsResponse, _ := client.DescribeAccountsWithOptions(describeAccountsRequest, runtime)
-	return describeAccountsResponse.Body.Accounts.DBInstanceAccount
+	describeAccountsResponse, ErrMessage := client.DescribeAccountsWithOptions(describeAccountsRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeRDSAccount, ErrMessage, nil
+	}
+	return Errmsg.SUCCESS, nil, describeAccountsResponse.Body.Accounts.DBInstanceAccount
 }
 
 // CreateRDSAccount 创建管理数据库的账号

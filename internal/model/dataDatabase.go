@@ -1,6 +1,8 @@
 package model
 
-import "Backend/internal/Errmsg"
+import (
+	"Backend/internal/utils/Errmsg"
+)
 
 type DataDatabase struct {
 	UUID                string `gorm:"primaryKey" json:"UUID"`

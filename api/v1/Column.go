@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"Backend/internal/Errmsg"
 	"Backend/internal/model"
+	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -10,12 +10,16 @@ import (
 func GetColumnDetails(c *gin.Context) {
 	var queryinfo model.ColumnDetailsQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
-	if queryinfo.GroupName == "All" { queryinfo.GroupName = "" }
-	if queryinfo.RiskLevelName == "All" { queryinfo.RiskLevelName = "" }
+	if queryinfo.GroupName == "All" {
+		queryinfo.GroupName = ""
+	}
+	if queryinfo.RiskLevelName == "All" {
+		queryinfo.RiskLevelName = ""
+	}
 	// 判断用户输入
-	if (err != nil) || (len(queryinfo.RuleName) > 50) || (queryinfo.PageSize > 50){
+	if (err != nil) || (len(queryinfo.RuleName) > 50) || (queryinfo.PageSize > 50) {
 		c.JSON(http.StatusOK, gin.H{
-			"Code": Errmsg.ERROR,
+			"Code":    Errmsg.ERROR,
 			"Message": Errmsg.GetErrMsg(Errmsg.Error_QueryInfo),
 		})
 		return
@@ -24,7 +28,7 @@ func GetColumnDetails(c *gin.Context) {
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"Code": Errmsg.Error_NotFound,
+			"Code":    Errmsg.Error_NotFound,
 			"Message": Errmsg.GetErrMsg(Errmsg.Error_NotFound),
 		})
 		return
@@ -45,7 +49,7 @@ func GetColumns(c *gin.Context) {
 	// 判断用户输入
 	if err != nil || queryinfo.TableName == "" || queryinfo.PageSize > 50 {
 		c.JSON(http.StatusOK, gin.H{
-			"Code": Errmsg.ERROR,
+			"Code":    Errmsg.ERROR,
 			"Message": Errmsg.GetErrMsg(Errmsg.Error_QueryInfo),
 		})
 		return
@@ -54,7 +58,7 @@ func GetColumns(c *gin.Context) {
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"Code": Errmsg.Error_NotFound,
+			"Code":    Errmsg.Error_NotFound,
 			"Message": Errmsg.GetErrMsg(Errmsg.Error_NotFound),
 		})
 		return

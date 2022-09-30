@@ -1,31 +1,31 @@
 package model
 
 import (
-	"Backend/internal/Errmsg"
+	"Backend/internal/utils/Errmsg"
 	"github.com/google/uuid"
 )
 
 type InsertInfo struct {
-	GroupName 	string
-	GroupOwner 	string
-	OwnerMail 	string
-	SecPo 		string
-	SecPoMail	string
+	GroupName  string
+	GroupOwner string
+	OwnerMail  string
+	SecPo      string
+	SecPoMail  string
 }
 
 type DevGroup struct {
-	UUID				string 	`gorm:"primaryKey" json:"UUID"`
-	GroupName 			string	`gorm:"type:varchar(50)" json:"GroupName"`  // 项目组名
-	GroupOwner			string 	`gorm:"type:varchar(50)" json:"GroupOwner"` // 项目组负责人
-	OwnerMail			string 	`gorm:"type:varchar(50)" json:"OwnerMail"`	// 负责人邮箱
-	SecPo				string 	`gorm:"type:varchar(50)" json:"SecPo"`  // 安全负责人
-	SecPoMail			string	`gorm:"type:varchar(50)" json:"SecPoMail"`  // 安全负责人邮箱
-//	LastUpdateTime      string  `gorm:"type:varchar(50)" json:"LastFinishTime"` //最近一次更新时间
+	UUID       string `gorm:"primaryKey" json:"UUID"`
+	GroupName  string `gorm:"type:varchar(50)" json:"GroupName"`  // 项目组名
+	GroupOwner string `gorm:"type:varchar(50)" json:"GroupOwner"` // 项目组负责人
+	OwnerMail  string `gorm:"type:varchar(50)" json:"OwnerMail"`  // 负责人邮箱
+	SecPo      string `gorm:"type:varchar(50)" json:"SecPo"`      // 安全负责人
+	SecPoMail  string `gorm:"type:varchar(50)" json:"SecPoMail"`  // 安全负责人邮箱
+	//	LastUpdateTime      string  `gorm:"type:varchar(50)" json:"LastFinishTime"` //最近一次更新时间
 }
 
 type GroupQueryInfo struct {
-	PageNum  		int
-	PageSize 		int
+	PageNum  int
+	PageSize int
 }
 
 // AddDevGroup 新建开发项目组
@@ -39,7 +39,7 @@ func AddDevGroup(data InsertInfo) int {
 	input.SecPo = data.SecPo
 	input.SecPoMail = data.SecPoMail
 	err := db.Create(&input).Error
-	if err!=nil {
+	if err != nil {
 		return Errmsg.ERROR
 	}
 	return Errmsg.SUCCESS

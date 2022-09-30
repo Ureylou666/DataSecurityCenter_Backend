@@ -8,8 +8,8 @@ InitConnect：
 */
 
 import (
-	"Backend/internal/application/setting"
 	"Backend/internal/model"
+	"Backend/internal/utils/setting"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/client"
 	rds20140815 "github.com/alibabacloud-go/rds-20140815/v2/client"
 	util "github.com/alibabacloud-go/tea-utils/service"

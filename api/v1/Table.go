@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"Backend/internal/Errmsg"
 	"Backend/internal/model"
+	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -13,7 +13,7 @@ func GetTables(c *gin.Context) {
 	// 判断用户输入
 	if (err != nil) || (queryinfo.PageSize > 50) || (queryinfo.InstanceName == "") {
 		c.JSON(http.StatusOK, gin.H{
-			"Code": Errmsg.ERROR,
+			"Code":    Errmsg.ERROR,
 			"Message": Errmsg.GetErrMsg(Errmsg.Error_QueryInfo),
 		})
 		return
@@ -22,7 +22,7 @@ func GetTables(c *gin.Context) {
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"Code": Errmsg.Error_NotFound,
+			"Code":    Errmsg.Error_NotFound,
 			"Message": Errmsg.GetErrMsg(Errmsg.Error_NotFound),
 		})
 		return

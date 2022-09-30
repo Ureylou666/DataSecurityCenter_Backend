@@ -1,9 +1,9 @@
 package v1
 
 import (
-	"Backend/internal/Errmsg"
-	"Backend/internal/application/initialize/aliyunSDDP"
+	"Backend/internal/application/Basic/aliyunSDDP"
 	"Backend/internal/model"
+	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )

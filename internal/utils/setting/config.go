@@ -16,6 +16,7 @@ var (
 	DbUser     string
 	DbPassword string
 	DbName     string
+	SSLCert    string
 	// 阿里云AKSK
 	AKSK Aliyun
 	// cnisdp 审计账号
@@ -59,6 +60,7 @@ func LoadDatabase() {
 	DbUser = viper.GetString("Database_RDS_Dev.DbUser")
 	DbPassword = viper.GetString("Database_RDS_Dev.DbPassword")
 	DbName = viper.GetString("Database_RDS_Dev.DbName")
+	SSLCert = viper.GetString("Database_RDS_Dev.SSLCert")
 }
 
 func LoadAuditAccount() {

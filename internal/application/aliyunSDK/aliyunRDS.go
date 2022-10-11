@@ -75,6 +75,26 @@ func DescribeDBInstanceAttribute(InstanceId string, client *rds20140815.Client) 
 	return Errmsg.SUCCESS, nil, describeDBInstanceAttributeResponse.Body.Items.DBInstanceAttribute[0]
 }
 
+// 查询实例SSL设置
+func DescribeDBInstranceSSL(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, SSLEnabled bool) {
+	describeDBInstanceSSLRequest := &rds20140815.DescribeDBInstanceSSLRequest{
+		DBInstanceId: tea.String(InstanceId),
+	}
+	runtime := &util.RuntimeOptions{}
+	describeDBInstanceSSLResponse, ErrMessage := client.DescribeDBInstanceSSLWithOptions(describeDBInstanceSSLRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeInstanceSSL, ErrMessage, false
+	}
+	if *describeDBInstanceSSLResponse.Body.SSLEnabled == "on" || *describeDBInstanceSSLResponse.Body.SSLEnabled == "Yes" {
+		return Errmsg.SUCCESS, nil, true
+	}
+	if *describeDBInstanceSSLResponse.Body.SSLEnabled == "off" || *describeDBInstanceSSLResponse.Body.SSLEnabled == "No" {
+		return Errmsg.SUCCESS, nil, false
+	}
+	// 默认为false吧
+	return Errmsg.SUCCESS, nil, false
+}
+
 // DescribeRDSAccount 查询实例的账号信息
 func DescribeRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, RDSAccountList []*rds20140815.DescribeAccountsResponseBodyAccountsDBInstanceAccount) {
 	describeAccountsRequest := &rds20140815.DescribeAccountsRequest{
@@ -91,28 +111,47 @@ func DescribeRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode 
 }
 
 // CreateRDSAccount 创建管理数据库的账号
-func CreateRDSAccount(DBInstanceId string, client *rds20140815.Client) {
+func CreateRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
 	setting.LoadAuditAccount()
 	// 调用sdk创建用户
 	createAccountRequest := &rds20140815.CreateAccountRequest{
-		DBInstanceId:       tea.String(DBInstanceId),
+		DBInstanceId:       tea.String(InstanceId),
 		AccountName:        tea.String(setting.AccountName),
 		AccountDescription: tea.String(setting.AccountDescription),
 		AccountType:        tea.String(setting.AccountType),
-		AccountPassword:    tea.String(setting.AccountPassword),
+		AccountPassword:    tea.String(setting.AccountPassword + InstanceId[len(InstanceId)-4:len(InstanceId)-1]),
 	}
 	runtime := &util.RuntimeOptions{
 		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
 		ReadTimeout:    tea.Int(50000),
 		ConnectTimeout: tea.Int(50000),
 	}
-	_, _ = client.CreateAccountWithOptions(createAccountRequest, runtime)
+	_, err := client.CreateAccountWithOptions(createAccountRequest, runtime)
+	if err != nil {
+		return Errmsg.ErrorCreateRDSAccount, err
+	}
+	return Errmsg.SUCCESS, nil
+}
+
+// DescribeDatabases 查询RDS实例下的数据库信息
+func DescribeDatabases(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, DatabaseList []*rds20140815.DescribeDatabasesResponseBodyDatabasesDatabase) {
+	describeDatabasesRequest := &rds20140815.DescribeDatabasesRequest{
+		DBInstanceId: tea.String(InstanceId),
+		PageSize:     tea.Int32(100),
+		PageNumber:   tea.Int32(1),
+	}
+	runtime := &util.RuntimeOptions{}
+	describeDatabasesResponse, ErrMessage := client.DescribeDatabasesWithOptions(describeDatabasesRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeDatabases, ErrMessage, nil
+	}
+	return Errmsg.SUCCESS, nil, describeDatabasesResponse.Body.Databases.Database
 }
 
 // UnlockAccount 解锁RDS PostgresSQL实例的账号
-func UnlockAccount(DBInstanceId string, client *rds20140815.Client) {
+func UnlockAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
 	unlockAccountRequest := &rds20140815.UnlockAccountRequest{
-		DBInstanceId: tea.String(DBInstanceId),
+		DBInstanceId: tea.String(InstanceId),
 		AccountName:  tea.String("cnisdp"),
 	}
 	runtime := &util.RuntimeOptions{
@@ -120,17 +159,28 @@ func UnlockAccount(DBInstanceId string, client *rds20140815.Client) {
 		ReadTimeout:    tea.Int(50000),
 		ConnectTimeout: tea.Int(50000),
 	}
-	_, _ = client.UnlockAccountWithOptions(unlockAccountRequest, runtime)
+	_, err := client.UnlockAccountWithOptions(unlockAccountRequest, runtime)
+	if err != nil {
+		return Errmsg.ErrorUnlockRDSAccount, err
+	}
+	return Errmsg.SUCCESS, nil
 }
 
-// DescribeDatabases 查询RDS实例下的数据库信息
-func DescribeDatabases(DBInstanceId string, client *rds20140815.Client) []*rds20140815.DescribeDatabasesResponseBodyDatabasesDatabase {
-	describeDatabasesRequest := &rds20140815.DescribeDatabasesRequest{
-		DBInstanceId: tea.String(DBInstanceId),
-		PageSize:     tea.Int32(100),
-		PageNumber:   tea.Int32(1),
+// LockAccount 锁定用户
+func LockAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
+	setting.LoadAuditAccount()
+	lockAccountRequest := &rds20140815.LockAccountRequest{
+		DBInstanceId: tea.String(InstanceId),
+		AccountName:  tea.String(setting.AccountName),
 	}
-	runtime := &util.RuntimeOptions{}
-	describeDatabasesResponse, _ := client.DescribeDatabasesWithOptions(describeDatabasesRequest, runtime)
-	return describeDatabasesResponse.Body.Databases.Database
+	runtime := &util.RuntimeOptions{
+		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
+		ReadTimeout:    tea.Int(50000),
+		ConnectTimeout: tea.Int(50000),
+	}
+	_, ErrMessage = client.LockAccountWithOptions(lockAccountRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorLockAccount, ErrMessage
+	}
+	return Errmsg.SUCCESS, nil
 }

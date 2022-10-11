@@ -2,7 +2,7 @@ package v1
 
 import (
 	"Backend/internal/application/Basic/aliyunSDDP"
-	"Backend/internal/model"
+	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -14,7 +14,7 @@ type InitInfo struct {
 
 // GetGroup 查询Group信息
 func GetGroup(c *gin.Context) {
-	var queryinfo model.GroupQueryInfo
+	var queryinfo local.GroupQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
 	// 判断用户输入
 	if (err != nil) || (queryinfo.PageSize > 50) {
@@ -24,7 +24,7 @@ func GetGroup(c *gin.Context) {
 		})
 		return
 	}
-	resData, resTotal, groupTotal := model.GetDevGroup(queryinfo)
+	resData, resTotal, groupTotal := local.GetDevGroup(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -45,7 +45,7 @@ func GetGroup(c *gin.Context) {
 
 // CreateGroup 新增项目组 暂不在前端显示！！！
 func CreateGroup(c *gin.Context) {
-	var insertData model.InsertInfo
+	var insertData local.InsertInfo
 	err := c.ShouldBindJSON(&insertData)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -54,7 +54,7 @@ func CreateGroup(c *gin.Context) {
 		})
 		return
 	}
-	if model.AddDevGroup(insertData) != Errmsg.SUCCESS {
+	if local.AddDevGroup(insertData) != Errmsg.SUCCESS {
 		c.JSON(http.StatusOK, gin.H{
 			"Code":    Errmsg.Error_InsertInfo,
 			"Message": Errmsg.GetErrMsg(Errmsg.Error_InsertInfo),
@@ -73,7 +73,7 @@ func CreateGroup(c *gin.Context) {
 func InitGroupData(c *gin.Context) {
 	var data InitInfo
 	err := c.ShouldBindJSON(&data)
-	if (err != nil) || (model.CheckGroup(data.Groupname)) {
+	if (err != nil) || (local.CheckGroup(data.Groupname)) {
 		c.JSON(http.StatusOK, gin.H{
 			"Code":    Errmsg.ERROR,
 			"Message": Errmsg.GetErrMsg(Errmsg.ERROR),

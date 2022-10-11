@@ -1,4 +1,4 @@
-package model
+package local
 
 // 用于配置连接数据库
 import (
@@ -15,7 +15,7 @@ var err error
 func InitDb() {
 	setting.LoadDatabase()
 	//dsn := Utils.DbUser + ":" + Utils.DbPassword + "@tcp(" + Utils.DbHost + ":" + Utils.DbPort + ")/" + Utils.DbName + "?charset=utf8mb4&parseTime=True&loc=Local"
-	dsn := "host=" + setting.DbHost + " user=" + setting.DbUser + " password=" + setting.DbPassword + " dbname=" + setting.DbName + " port=" + setting.DbPort + " sslmode=disable"
+	dsn := "host=" + setting.DbHost + " user=" + setting.DbUser + " password=" + setting.DbPassword + " dbname=" + setting.DbName + " port=" + setting.DbPort + " sslmode=verify-ca sslrootcert=" + setting.SSLCert
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
@@ -24,7 +24,7 @@ func InitDb() {
 	if err != nil {
 		fmt.Println("连接数据库失败，请检查参数", err)
 	}
-	db.AutoMigrate(&CloudAccount{}, &DataInventory{}, &DatabaseAccount{})
+	db.AutoMigrate(&CloudAccount{}, &DataInventory{}, &RDSAccount{}, &DataDatabase{}, &DataTable{}, &DataColumn{}, &DataSample{})
 	// 连接池配置
 	//sqlDB, _ := db.DB()
 	// SetMaxIdleConns 设置空闲连接池中连接的最大数量

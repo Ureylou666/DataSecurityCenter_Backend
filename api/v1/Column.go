@@ -1,14 +1,14 @@
 package v1
 
 import (
-	"Backend/internal/model"
+	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func GetColumnDetails(c *gin.Context) {
-	var queryinfo model.ColumnDetailsQueryInfo
+	var queryinfo local.ColumnDetailsQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
 	if queryinfo.GroupName == "All" {
 		queryinfo.GroupName = ""
@@ -24,7 +24,7 @@ func GetColumnDetails(c *gin.Context) {
 		})
 		return
 	}
-	resData, resTotal, columnTotal := model.GetColumnDetails(queryinfo)
+	resData, resTotal, columnTotal := local.GetColumnDetails(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -44,7 +44,7 @@ func GetColumnDetails(c *gin.Context) {
 }
 
 func GetColumns(c *gin.Context) {
-	var queryinfo model.ColumnsQueryInfo
+	var queryinfo local.ColumnsQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
 	// 判断用户输入
 	if err != nil || queryinfo.TableName == "" || queryinfo.PageSize > 50 {
@@ -54,7 +54,7 @@ func GetColumns(c *gin.Context) {
 		})
 		return
 	}
-	resData, resTotal, columnTotal := model.GetTableColumn(queryinfo)
+	resData, resTotal, columnTotal := local.GetTableColumn(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{

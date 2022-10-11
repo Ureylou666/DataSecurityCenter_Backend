@@ -1,4 +1,4 @@
-package model
+package local
 
 import (
 	"Backend/internal/utils/Errmsg"

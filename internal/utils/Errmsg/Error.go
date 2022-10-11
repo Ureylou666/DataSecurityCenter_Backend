@@ -15,22 +15,37 @@ const (
 	ErrorAddInventory           = 303
 	DescribeDBInstanceAttribute = 304
 	ErrorDescribeRDSAccount     = 305
+	ErrorDescribeDatabases      = 306
+	ErrorDescribeInstanceSSL    = 307
+	ErrorLockAccount            = 308
+	// aliyun UpdateDBDetails 模块报错
+	ErrorCheckInventoryExist          = 401
+	ErrorCheckAccountExist            = 402
+	ErrorCreateRDSAccount             = 403
+	ErrorUnlockRDSAccount             = 404
+	ErrorUpdatePgsqlDetailsConnection = 405
 )
 
-var codemsg = map[int]string{
-	SUCCESS:                     "OK",
-	ERROR:                       "FAIL",
-	ErrorCreateSTSClient:        "createSTSClient fail",
-	ErrorAssumeRole:             "AssumeRole fail",
-	ErrorCreateRMClient:         "ErrorCreateRMClient fail",
-	ErrorListAliCloudAccounts:   "ErrorListAliCloudAccounts fail",
-	ErrorCreateRDSClient:        "ErrorCreateRDSClient fail",
-	ErrorDescribeRDSInstances:   "ErrorDescribeRDSInstances fail",
-	ErrorAddInventory:           "ErrorAddInventory fail",
-	DescribeDBInstanceAttribute: "DescribeDBInstanceAttribute fail",
-	ErrorDescribeRDSAccount:     "ErrorDescribeRDSAccount fail",
+var CodeMsg = map[int]string{
+	SUCCESS:                           "OK",
+	ERROR:                             "FAIL",
+	ErrorCreateSTSClient:              "createSTSClient fail",
+	ErrorAssumeRole:                   "AssumeRole fail",
+	ErrorCreateRMClient:               "CreateRMClient fail",
+	ErrorListAliCloudAccounts:         "ListAliCloudAccounts fail",
+	ErrorCreateRDSClient:              "CreateRDSClient fail",
+	ErrorDescribeRDSInstances:         "DescribeRDSInstances fail",
+	ErrorDescribeInstanceSSL:          "ErrorDescribeInstanceSSL",
+	ErrorAddInventory:                 "AddInventory fail",
+	DescribeDBInstanceAttribute:       "DescribeDBInstanceAttribute fail",
+	ErrorDescribeRDSAccount:           "DescribeRDSAccount fail",
+	ErrorDescribeDatabases:            "ErrorDescribeDatabases Fail",
+	ErrorCheckInventoryExist:          "Inventory Not Exist",
+	ErrorUnlockRDSAccount:             "UnlockAccount Fail",
+	ErrorUpdatePgsqlDetailsConnection: "Error Connect the RemoteDB",
+	ErrorLockAccount:                  "Error Lock Account",
 }
 
 func GetErrMsg(code int) string {
-	return codemsg[code]
+	return CodeMsg[code]
 }

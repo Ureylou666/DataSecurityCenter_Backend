@@ -1,4 +1,4 @@
-package model
+package local
 
 import (
 	"Backend/internal/utils/Errmsg"
@@ -21,6 +21,7 @@ type DataInventory struct {
 	RDSEngineVersion        string `gorm:"type:varchar(50)" json:"RDSEngineVersion"`        //数据库版本
 	RDSInstanceStatus       string `gorm:"type:varchar(50)" json:"RDSInstanceStatus"`       //实例状态
 	RDSConnectionString     string `gorm:"type:varchar(100)" json:"RDSConnectionString"`    //连接字符串
+	SSLEnabled              bool   `gorm:"type:boolean" json:"SSLEnabled"`                  // 是否支持ssl
 	RDSConnectionPort       string `gorm:"type:varchar(10)" json:"RDSConnectionPort"`       //连接端口
 	RegionId                string `gorm:"type:varchar(50)" json:"RegionId"`                //地区
 	DepartName              string `gorm:"type:varchar(50)" json:"DepartName"`              //主体
@@ -37,7 +38,7 @@ type InventoryQueryInfo struct {
 	PageSize     int
 }
 
-// 判断数据库中是否存在相关资产
+// CheckInventoryExist 判断数据库中是否存在相关资产
 func CheckInventoryExist(InstanceID string) bool {
 	var Num int64
 	db.Where("rds_instance_id = ?", InstanceID).Find(&DataInventory{}).Count(&Num)
@@ -57,9 +58,14 @@ func AddInventory(data *DataInventory) (ErrCode int, ErrMessage error) {
 	return Errmsg.SUCCESS, nil
 }
 
-//
+// DeleteInventory 通过RDS InstanceID 删除资产
 func DeleteInventory(InstanceID string) {
 	db.Where("rds_instance_id = ?", InstanceID).Delete(&DataInventory{})
+}
+
+// DeleteCloudInventory 通过CloudAccountID 删除资产
+func DeleteCloudInventory(CloudAccountID string) {
+	db.Where("cloud_account_id = ?", CloudAccountID).Delete(&DataInventory{})
 }
 
 // GetInventory 获取aliyun数据资产列表 并进行分页展示
@@ -78,4 +84,17 @@ func GetInventory(query InventoryQueryInfo) ([]DataInventory, int64, int64) {
 		resTotal = int64(len(result))
 	}
 	return result, resTotal, inventoryTotal
+}
+
+// GetAccountID 通过InstanceID获取
+func GetAccountID(InstanceID string) (CloudAccountID string) {
+	var result DataInventory
+	db.Where("rds_instance_id = ?", InstanceID).First(&result)
+	return result.CloudAccountID
+}
+
+// GetConnectString 通过InstanceID获取ConnectString相关
+func GetConnectString(InstanceID string) (RdsDetails DataInventory) {
+	db.Where("rds_instance_id = ?", InstanceID).First(&RdsDetails)
+	return RdsDetails
 }

@@ -1,14 +1,14 @@
 package v1
 
 import (
-	"Backend/internal/model"
+	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func GetRules(c *gin.Context) {
-	var queryinfo model.RulesQueryInfo
+	var queryinfo local.RulesQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
 	// 判断用户输入
 	if (err != nil) || (len(queryinfo.RuleName) > 50) || (queryinfo.PageSize > 50) {
@@ -21,7 +21,7 @@ func GetRules(c *gin.Context) {
 	if queryinfo.RiskLevelName == "All" {
 		queryinfo.RiskLevelName = ""
 	}
-	resData, resTotal, rulesTotal := model.GetRules(queryinfo)
+	resData, resTotal, rulesTotal := local.GetRules(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{

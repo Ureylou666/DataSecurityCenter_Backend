@@ -1,14 +1,14 @@
 package v1
 
 import (
-	"Backend/internal/model"
+	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 func GetTables(c *gin.Context) {
-	var queryinfo model.TabelQueryInfo
+	var queryinfo local.TabelQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
 	// 判断用户输入
 	if (err != nil) || (queryinfo.PageSize > 50) || (queryinfo.InstanceName == "") {
@@ -18,7 +18,7 @@ func GetTables(c *gin.Context) {
 		})
 		return
 	}
-	resData, resTotal, tableTotal := model.GetTables(queryinfo)
+	resData, resTotal, tableTotal := local.GetTables(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{

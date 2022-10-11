@@ -8,7 +8,7 @@ InitConnect：
 */
 
 import (
-	"Backend/internal/model"
+	"Backend/internal/model/local"
 	"Backend/internal/utils/setting"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/client"
 	rds20140815 "github.com/alibabacloud-go/rds-20140815/v2/client"
@@ -53,7 +53,7 @@ func CreateClient(accessKeyId *string, accessKeySecret *string) (_result *rds201
 
 // 查询项目组RDS实例列表
 func initDescribeRDSInstances(Group string, client *rds20140815.Client) {
-	var input model.DataInventory // input 表示录入到数据库中的值
+	var input local.DataInventory // input 表示录入到数据库中的值
 	describeDBInstancesRequest := &rds20140815.DescribeDBInstancesRequest{
 		RegionId:   tea.String("cn-shanghai"), // 目前默认都在cn-shanghai
 		PageSize:   tea.Int32(100),
@@ -68,7 +68,7 @@ func initDescribeRDSInstances(Group string, client *rds20140815.Client) {
 	// 遍历每一个 RDS实例
 	for i := 0; i < len(rawInstancelist); i++ {
 		// 判断 rds实例是否已经在数据库中
-		if !model.CheckInventoryExist(*rawInstancelist[i].DBInstanceId) {
+		if !local.CheckInventoryExist(*rawInstancelist[i].DBInstanceId) {
 			input.UUID = uuid.New().String()
 			input.CreationTime = *rawInstancelist[i].CreateTime
 			input.GroupName = Group
@@ -86,7 +86,7 @@ func initDescribeRDSInstances(Group string, client *rds20140815.Client) {
 			input.RDSInstanceStatus = *rawInstancelist[i].DBInstanceStatus
 			input.RDSConnectionString = *rawInstancelist[i].ConnectionString
 			input.RegionId = *rawInstancelist[i].RegionId
-			model.AddInventory(&input)
+			local.AddInventory(&input)
 		}
 		// 初始化RDS实例下审计账号
 		initAuditAccount(*rawInstancelist[i].DBInstanceId, client)
@@ -105,7 +105,7 @@ func initDescribeRDSInstances(Group string, client *rds20140815.Client) {
 		- 锁定 ISDP账号
 */
 func initAuditAccount(InstanceName string, client *rds20140815.Client) {
-	var input model.DatabaseAccount // input 表示录入到数据库中的值
+	var input local.DatabaseAccount // input 表示录入到数据库中的值
 	describeAccountsRequest := &rds20140815.DescribeAccountsRequest{
 		DBInstanceId: tea.String(InstanceName),
 		PageSize:     tea.Int32(200),
@@ -120,7 +120,7 @@ func initAuditAccount(InstanceName string, client *rds20140815.Client) {
 	rawAccountlist := Accountlist.Body.Accounts.DBInstanceAccount
 	// 更新数据库账户列表
 	for i := 0; i < len(rawAccountlist); i++ {
-		if !model.CheckAccountExist(InstanceName, *rawAccountlist[i].AccountName) {
+		if !local.CheckAccountExist(InstanceName, *rawAccountlist[i].AccountName) {
 			input.UUID = uuid.New().String()
 			if rawAccountlist[i].AccountDescription != nil {
 				input.AccountDescription = *rawAccountlist[i].AccountDescription
@@ -131,11 +131,11 @@ func initAuditAccount(InstanceName string, client *rds20140815.Client) {
 			input.DBInstanceId = *rawAccountlist[i].DBInstanceId
 			input.AccountType = *rawAccountlist[i].AccountType
 			input.AccountName = *rawAccountlist[i].AccountName
-			model.AddDatabaseAccount(&input)
+			local.AddDatabaseAccount(&input)
 		}
 	}
 	// 判断是否已开通审计账户，未开通则创建cnisdp账号
-	if !model.CheckAccountExist(InstanceName, "cnisdp") {
+	if !local.CheckAccountExist(InstanceName, "cnisdp") {
 		setting.LoadAuditAccount()
 		// 调用sdk创建用户
 		createAccountRequest := &rds20140815.CreateAccountRequest{
@@ -158,7 +158,7 @@ func initAuditAccount(InstanceName string, client *rds20140815.Client) {
 		input.DBInstanceId = InstanceName
 		input.AccountType = setting.AccountType
 		input.AccountName = setting.AccountName
-		model.AddDatabaseAccount(&input)
+		local.AddDatabaseAccount(&input)
 	}
 	// 解锁cnisdp账号
 	unlockAccountRequest := &rds20140815.UnlockAccountRequest{
@@ -174,8 +174,8 @@ func initAuditAccount(InstanceName string, client *rds20140815.Client) {
 }
 
 func initDescribeDatabases(InstanceName string, client *rds20140815.Client) {
-	var inputDB model.DataDatabase //input表示输入到系统中的数据
-	var inputAccountPrivilege model.AccountPrivilege
+	var inputDB local.DataDatabase //input表示输入到系统中的数据
+	var inputAccountPrivilege local.AccountPrivilege
 	describeDatabasesRequest := &rds20140815.DescribeDatabasesRequest{
 		DBInstanceId: tea.String(InstanceName),
 		PageSize:     tea.Int32(100),
@@ -198,7 +198,7 @@ func initDescribeDatabases(InstanceName string, client *rds20140815.Client) {
 		inputDB.DatabaseName = *dblist[i].DBName
 		inputDB.DatabaseStatus = *dblist[i].DBStatus
 		inputDB.DatabaseEngine = *dblist[i].Engine
-		model.AddDatabase(&inputDB)
+		local.AddDatabase(&inputDB)
 		// 输入数据库权限清单
 		accountlist := dblist[i].Accounts.AccountPrivilegeInfo
 		for j := 0; j < len(accountlist); j++ {
@@ -207,7 +207,7 @@ func initDescribeDatabases(InstanceName string, client *rds20140815.Client) {
 			inputAccountPrivilege.DatabaseName = *dblist[i].DBName
 			inputAccountPrivilege.AccountName = *accountlist[j].Account
 			inputAccountPrivilege.Privilege = *accountlist[j].AccountPrivilege
-			model.AddAccountPrivilege(&inputAccountPrivilege)
+			local.AddAccountPrivilege(&inputAccountPrivilege)
 		}
 	}
 }

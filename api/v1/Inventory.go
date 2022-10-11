@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"Backend/internal/model"
+	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -9,7 +9,7 @@ import (
 
 // 获取实例
 func GetInventory(c *gin.Context) {
-	var queryinfo model.InventoryQueryInfo
+	var queryinfo local.InventoryQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
 	if queryinfo.GroupName == "All" {
 		queryinfo.GroupName = ""
@@ -25,7 +25,7 @@ func GetInventory(c *gin.Context) {
 		})
 		return
 	}
-	res_data, res_total, inventory_total := model.GetInventory(queryinfo)
+	res_data, res_total, inventory_total := local.GetInventory(queryinfo)
 	// 未获取到对应数据
 	if res_data == nil {
 		c.JSON(http.StatusOK, gin.H{

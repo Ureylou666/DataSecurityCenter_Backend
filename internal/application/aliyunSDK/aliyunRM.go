@@ -15,6 +15,7 @@ import (
 
 func createRMClient() (ErrCode int, ErrMessage error, client *resourcemanager20200331.Client) {
 	// 获取临时STS token
+	// 这边AccountID 硬编码
 	previousCode, previousMsg, AccessKeyId, AccessKeySecret, SecurityToken := AssumeRole("1174006592814680")
 	// 判断是否获取成功
 	if previousCode != Errmsg.SUCCESS {

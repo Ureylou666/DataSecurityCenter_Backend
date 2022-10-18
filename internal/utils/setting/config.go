@@ -9,6 +9,7 @@ var (
 	//Server相关
 	AppMode  string
 	HttpPort string
+	IPAddr   string
 	//Database相关
 	Db         string
 	DbHost     string
@@ -24,6 +25,9 @@ var (
 	AccountPassword    string
 	AccountDescription string
 	AccountType        string
+	// 密钥相关
+	Salt string
+	Key  string
 )
 
 type Aliyun struct {
@@ -46,13 +50,14 @@ func init() {
 	LoadDatabase()
 }
 
-// 读取服务器配置
+// LoadServer 读取服务器配置
 func LoadServer() {
 	AppMode = viper.GetString("Server.Appmode")
 	HttpPort = viper.GetString("Server.HttpPort")
+	IPAddr = viper.GetString("Server.IPAddr")
 }
 
-// 读取数据库配置
+// LoadDatabase 读取数据库配置
 func LoadDatabase() {
 	Db = viper.GetString("Database_RDS_Dev.Db")
 	DbHost = viper.GetString("Database_RDS_Dev.DbHost")
@@ -68,4 +73,9 @@ func LoadAuditAccount() {
 	AccountPassword = viper.GetString("AuditAccount.AccountPassword")
 	AccountDescription = viper.GetString("AuditAccount.AccountDescription")
 	AccountType = viper.GetString("AuditAccount.AccountType")
+}
+
+func LoadEncryption() {
+	Salt = viper.GetString("Encryption.Salt")
+	Key = viper.GetString("Encryption.Key")
 }

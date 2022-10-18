@@ -5,16 +5,16 @@ type DataSample struct {
 	InstanceID   string `gorm:"type:string"`
 	DatabaseName string `gorm:"type:string"`
 	TableName    string `gorm:"type:string"`
-	SampleData0  string `gorm:"type:string"`
-	SampleData1  string `gorm:"type:string"`
-	SampleData2  string `gorm:"type:string"`
-	SampleData3  string `gorm:"type:string"`
-	SampleData4  string `gorm:"type:string"`
-	SampleData5  string `gorm:"type:string"`
-	SampleData6  string `gorm:"type:string"`
-	SampleData7  string `gorm:"type:string"`
-	SampleData8  string `gorm:"type:string"`
-	SampleData9  string `gorm:"type:string"`
+	SampleData0  string `gorm:"type:text"`
+	SampleData1  string `gorm:"type:text"`
+	SampleData2  string `gorm:"type:text"`
+	SampleData3  string `gorm:"type:text"`
+	SampleData4  string `gorm:"type:text"`
+	SampleData5  string `gorm:"type:text"`
+	SampleData6  string `gorm:"type:text"`
+	SampleData7  string `gorm:"type:text"`
+	SampleData8  string `gorm:"type:text"`
+	SampleData9  string `gorm:"type:text"`
 }
 
 // InsertSampleData 新增数据样例

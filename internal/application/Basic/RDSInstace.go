@@ -3,9 +3,9 @@ package Basic
 import (
 	"Backend/internal/application/aliyunSDK"
 	"Backend/internal/model/local"
+	"Backend/internal/utils"
 	"Backend/internal/utils/Errmsg"
 	rds20140815 "github.com/alibabacloud-go/rds-20140815/v2/client"
-	"github.com/google/uuid"
 )
 
 /*
@@ -22,6 +22,7 @@ func UpdateRDS(CloudAccountID string) (ErrCode int, ErrMessage error) {
 	if previousCode != Errmsg.SUCCESS {
 		return previousCode, previousMsg
 	}
+	// 先删除 后更新
 	// 删除数据库中CloudAccountID下所有 RDS 实例
 	if CloudAccountID != "" {
 		local.DeleteCloudInventory(CloudAccountID)
@@ -69,6 +70,13 @@ func UpdateRDSInstanceList(CloudAccountID string, client *rds20140815.Client) (E
 			if previousCode != Errmsg.SUCCESS {
 				return previousCode, previousMsg
 			}
+			// 更新RDS下所有DB详情 如果有只读实例 则跳过
+			if len(RDSInstanceList[i].ReadOnlyDBInstanceIds.ReadOnlyDBInstanceId) == 0 {
+				previousCode, previousMsg = UpdateDBDetails(*RDSInstanceList[i].DBInstanceId)
+			}
+			if previousCode != Errmsg.SUCCESS {
+				return previousCode, previousMsg
+			}
 		}
 	}
 	return Errmsg.SUCCESS, nil
@@ -77,13 +85,16 @@ func UpdateRDSInstanceList(CloudAccountID string, client *rds20140815.Client) (E
 // UpdateRDSInstanceDetails 更新RDS实例详情
 func UpdateRDSInstanceDetails(CloudAccountID string, InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
 	var InstanceDetails *rds20140815.DescribeDBInstanceAttributeResponseBodyItemsDBInstanceAttribute
+	// 更新Inventory
+	// 先删除 后更新
+	local.DeleteInventory(InstanceId)
 	previousCode, previousMsg, InstanceDetails := aliyunSDK.DescribeDBInstanceAttribute(InstanceId, client)
 	if previousCode != Errmsg.SUCCESS {
 		return previousCode, previousMsg
 	}
 	var input local.DataInventory
-	// 录入前先进行格式化数据
-	input.UUID = uuid.New().String()
+	// 录入前先进行格式化数据 唯一id值 取为DBInstanceID hash
+	input.UUID = utils.StrToHash(*InstanceDetails.DBInstanceId)
 	input.CreationTime = *InstanceDetails.CreationTime
 	input.CloudAccountID = CloudAccountID
 	input.RDSInstanceID = *InstanceDetails.DBInstanceId
@@ -106,8 +117,6 @@ func UpdateRDSInstanceDetails(CloudAccountID string, InstanceId string, client *
 	input.RegionId = *InstanceDetails.RegionId
 	// 获取SSL是否开启
 	previousCode, previousMsg, input.SSLEnabled = aliyunSDK.DescribeDBInstranceSSL(InstanceId, client)
-	// 更新Inventory
-	local.DeleteInventory(input.RDSInstanceID)
 	previousCode, previousMsg = local.AddInventory(&input)
 	if previousCode != Errmsg.SUCCESS {
 		return previousCode, previousMsg
@@ -151,7 +160,7 @@ func UpdateDatabaseList(InstanceID string, client *rds20140815.Client) (ErrCode 
 	// 先删除 后更新
 	local.DeleteDatabase(InstanceID)
 	for i := 0; i < len(DatabaseList); i++ {
-		input.UUID = uuid.New().String()
+		input.UUID = utils.StrToHash(*DatabaseList[i].DBInstanceId)
 		input.InstanceID = *DatabaseList[i].DBInstanceId
 		if DatabaseList[i].DBDescription != nil {
 			input.Description = *DatabaseList[i].DBDescription

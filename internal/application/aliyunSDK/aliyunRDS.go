@@ -11,6 +11,7 @@ aliyun RDS 相关sdk接口
 */
 
 import (
+	"Backend/internal/utils"
 	"Backend/internal/utils/Errmsg"
 	"Backend/internal/utils/setting"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/client"
@@ -75,26 +76,6 @@ func DescribeDBInstanceAttribute(InstanceId string, client *rds20140815.Client) 
 	return Errmsg.SUCCESS, nil, describeDBInstanceAttributeResponse.Body.Items.DBInstanceAttribute[0]
 }
 
-// 查询实例SSL设置
-func DescribeDBInstranceSSL(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, SSLEnabled bool) {
-	describeDBInstanceSSLRequest := &rds20140815.DescribeDBInstanceSSLRequest{
-		DBInstanceId: tea.String(InstanceId),
-	}
-	runtime := &util.RuntimeOptions{}
-	describeDBInstanceSSLResponse, ErrMessage := client.DescribeDBInstanceSSLWithOptions(describeDBInstanceSSLRequest, runtime)
-	if ErrMessage != nil {
-		return Errmsg.ErrorDescribeInstanceSSL, ErrMessage, false
-	}
-	if *describeDBInstanceSSLResponse.Body.SSLEnabled == "on" || *describeDBInstanceSSLResponse.Body.SSLEnabled == "Yes" {
-		return Errmsg.SUCCESS, nil, true
-	}
-	if *describeDBInstanceSSLResponse.Body.SSLEnabled == "off" || *describeDBInstanceSSLResponse.Body.SSLEnabled == "No" {
-		return Errmsg.SUCCESS, nil, false
-	}
-	// 默认为false吧
-	return Errmsg.SUCCESS, nil, false
-}
-
 // DescribeRDSAccount 查询实例的账号信息
 func DescribeRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, RDSAccountList []*rds20140815.DescribeAccountsResponseBodyAccountsDBInstanceAccount) {
 	describeAccountsRequest := &rds20140815.DescribeAccountsRequest{
@@ -111,15 +92,31 @@ func DescribeRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode 
 }
 
 // CreateRDSAccount 创建管理数据库的账号
-func CreateRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
+func CreateRDSAccount(InstanceId string, DBEngine string, TempPasswd string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
 	setting.LoadAuditAccount()
+	var accountType string
+	// 不同数据库类型需要创建不同账号 PgSQL 直接设定为Super Mysql设置为normal
+	switch DBEngine {
+	case "PostgreSQL":
+		{
+			accountType = "Super"
+		}
+	case "MySQL":
+		{
+			accountType = "Normal"
+		}
+	case "SQLServer":
+		{
+			accountType = "Normal"
+		}
+	}
 	// 调用sdk创建用户
 	createAccountRequest := &rds20140815.CreateAccountRequest{
 		DBInstanceId:       tea.String(InstanceId),
 		AccountName:        tea.String(setting.AccountName),
 		AccountDescription: tea.String(setting.AccountDescription),
-		AccountType:        tea.String(setting.AccountType),
-		AccountPassword:    tea.String(setting.AccountPassword + InstanceId[len(InstanceId)-4:len(InstanceId)-1]),
+		AccountType:        tea.String(accountType),
+		AccountPassword:    tea.String(TempPasswd),
 	}
 	runtime := &util.RuntimeOptions{
 		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
@@ -133,19 +130,25 @@ func CreateRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode in
 	return Errmsg.SUCCESS, nil
 }
 
-// DescribeDatabases 查询RDS实例下的数据库信息
-func DescribeDatabases(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, DatabaseList []*rds20140815.DescribeDatabasesResponseBodyDatabasesDatabase) {
-	describeDatabasesRequest := &rds20140815.DescribeDatabasesRequest{
-		DBInstanceId: tea.String(InstanceId),
-		PageSize:     tea.Int32(100),
-		PageNumber:   tea.Int32(1),
+// GrantAccountPrivilege 授权账号访问数据库
+func GrantAccountPrivilege(InstanceId string, DBName string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
+	setting.LoadAuditAccount()
+	grantAccountPrivilegeRequest := &rds20140815.GrantAccountPrivilegeRequest{
+		DBInstanceId:     tea.String(InstanceId),
+		AccountName:      tea.String(setting.AccountName),
+		DBName:           tea.String(DBName),
+		AccountPrivilege: tea.String("ReadOnly"),
 	}
-	runtime := &util.RuntimeOptions{}
-	describeDatabasesResponse, ErrMessage := client.DescribeDatabasesWithOptions(describeDatabasesRequest, runtime)
+	runtime := &util.RuntimeOptions{
+		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
+		ReadTimeout:    tea.Int(50000),
+		ConnectTimeout: tea.Int(50000),
+	}
+	_, ErrMessage = client.GrantAccountPrivilegeWithOptions(grantAccountPrivilegeRequest, runtime)
 	if ErrMessage != nil {
-		return Errmsg.ErrorDescribeDatabases, ErrMessage, nil
+		return Errmsg.ErrorGrantAccountPrivilege, ErrMessage
 	}
-	return Errmsg.SUCCESS, nil, describeDatabasesResponse.Body.Databases.Database
+	return Errmsg.SUCCESS, nil
 }
 
 // UnlockAccount 解锁RDS PostgresSQL实例的账号
@@ -166,10 +169,10 @@ func UnlockAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, 
 	return Errmsg.SUCCESS, nil
 }
 
-// LockAccount 锁定用户
-func LockAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
+// DeleteAccount 删除审计数据库用户
+func DeleteAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
 	setting.LoadAuditAccount()
-	lockAccountRequest := &rds20140815.LockAccountRequest{
+	deleteAccountRequest := &rds20140815.DeleteAccountRequest{
 		DBInstanceId: tea.String(InstanceId),
 		AccountName:  tea.String(setting.AccountName),
 	}
@@ -178,9 +181,121 @@ func LockAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, Er
 		ReadTimeout:    tea.Int(50000),
 		ConnectTimeout: tea.Int(50000),
 	}
-	_, ErrMessage = client.LockAccountWithOptions(lockAccountRequest, runtime)
+	_, ErrMessage = client.DeleteAccountWithOptions(deleteAccountRequest, runtime)
 	if ErrMessage != nil {
-		return Errmsg.ErrorLockAccount, ErrMessage
+		return Errmsg.ErrorDeleteAccount, ErrMessage
+	}
+	return Errmsg.SUCCESS, nil
+}
+
+// DescribeDatabases 查询RDS实例下的数据库信息
+func DescribeDatabases(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, DatabaseList []*rds20140815.DescribeDatabasesResponseBodyDatabasesDatabase) {
+	describeDatabasesRequest := &rds20140815.DescribeDatabasesRequest{
+		DBInstanceId: tea.String(InstanceId),
+		PageSize:     tea.Int32(100),
+		PageNumber:   tea.Int32(1),
+	}
+	runtime := &util.RuntimeOptions{}
+	describeDatabasesResponse, ErrMessage := client.DescribeDatabasesWithOptions(describeDatabasesRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeDatabases, ErrMessage, nil
+	}
+	return Errmsg.SUCCESS, nil, describeDatabasesResponse.Body.Databases.Database
+}
+
+// DescribeDBInstranceSSL 查询实例SSL设置
+func DescribeDBInstranceSSL(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, SSLEnabled bool) {
+	describeDBInstanceSSLRequest := &rds20140815.DescribeDBInstanceSSLRequest{
+		DBInstanceId: tea.String(InstanceId),
+	}
+	runtime := &util.RuntimeOptions{}
+	describeDBInstanceSSLResponse, ErrMessage := client.DescribeDBInstanceSSLWithOptions(describeDBInstanceSSLRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeInstanceSSL, ErrMessage, false
+	}
+	if *describeDBInstanceSSLResponse.Body.SSLEnabled == "on" || *describeDBInstanceSSLResponse.Body.SSLEnabled == "Yes" {
+		return Errmsg.SUCCESS, nil, true
+	}
+	if *describeDBInstanceSSLResponse.Body.SSLEnabled == "off" || *describeDBInstanceSSLResponse.Body.SSLEnabled == "No" {
+		return Errmsg.SUCCESS, nil, false
+	}
+	// 默认为false吧
+	return Errmsg.SUCCESS, nil, false
+}
+
+// DescribeDBInstanceNetInfo 查询实例的所有连接地址信息
+func DescribeDBInstanceNetInfo(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, PublicConnectionString string, IPAddress string) {
+	describeDBInstanceNetInfoRequest := &rds20140815.DescribeDBInstanceNetInfoRequest{
+		DBInstanceId: tea.String(InstanceId),
+	}
+	runtime := &util.RuntimeOptions{}
+	describeDBInstanceNetInfoResponse, ErrMessage := client.DescribeDBInstanceNetInfoWithOptions(describeDBInstanceNetInfoRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeDBInstanceNetInfo, ErrMessage, "", ""
+	}
+	DBInstanceNetInfo := describeDBInstanceNetInfoResponse.Body.DBInstanceNetInfos.DBInstanceNetInfo
+	for i := 0; i < len(DBInstanceNetInfo); i++ {
+		if *DBInstanceNetInfo[i].IPType == "Public" {
+			return Errmsg.SUCCESS, nil, *DBInstanceNetInfo[i].ConnectionString, *DBInstanceNetInfo[i].IPAddress
+		}
+	}
+	return Errmsg.SUCCESS, nil, "", ""
+}
+
+// AllocateInstancePublicConnection 申请实例的外网地址
+func AllocateInstancePublicConnection(InstanceId string, DBPort string, client *rds20140815.Client) (ErrCode int, ErrMessage error, PublicConnectionString string) {
+	allocateInstancePublicConnectionRequest := &rds20140815.AllocateInstancePublicConnectionRequest{
+		DBInstanceId:           tea.String(InstanceId),
+		ConnectionStringPrefix: tea.String(utils.GenerateString()),
+		Port:                   tea.String(DBPort),
+	}
+	runtime := &util.RuntimeOptions{
+		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
+		ReadTimeout:    tea.Int(50000),
+		ConnectTimeout: tea.Int(50000),
+	}
+	allocateInstancePublicConnectionResponse, ErrMessage := client.AllocateInstancePublicConnectionWithOptions(allocateInstancePublicConnectionRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorAllocateInstancePublicConnection, ErrMessage, ""
+	}
+	return Errmsg.SUCCESS, nil, *allocateInstancePublicConnectionResponse.Body.ConnectionString
+}
+
+// ModifySecurityIps 修改RDS实例IP白名单
+func ModifySecurityIps(InstanceId string, ModifyMode string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
+	setting.LoadServer()
+	modifySecurityIpsRequest := &rds20140815.ModifySecurityIpsRequest{
+		ModifyMode:            tea.String(ModifyMode),
+		DBInstanceId:          tea.String(InstanceId),
+		SecurityIps:           tea.String(setting.IPAddr),
+		DBInstanceIPArrayName: tea.String("cnisdp"),
+	}
+	runtime := &util.RuntimeOptions{
+		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
+		ReadTimeout:    tea.Int(50000),
+		ConnectTimeout: tea.Int(50000),
+	}
+	_, ErrMessage = client.ModifySecurityIpsWithOptions(modifySecurityIpsRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorModifySecurityIps, ErrMessage
+	}
+	return Errmsg.SUCCESS, nil
+}
+
+// ReleaseInstancePublicConnection 释放实例的外网连接地址
+func ReleaseInstancePublicConnection(InstanceId string, PublicConnectionString string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
+	releaseInstancePublicConnectionRequest := &rds20140815.ReleaseInstancePublicConnectionRequest{
+		DBInstanceId:            tea.String(InstanceId),
+		CurrentConnectionString: tea.String(PublicConnectionString),
+	}
+	runtime := &util.RuntimeOptions{
+		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
+		ReadTimeout:    tea.Int(50000),
+		ConnectTimeout: tea.Int(50000),
+	}
+	_, ErrMessage = client.ReleaseInstancePublicConnectionWithOptions(releaseInstancePublicConnectionRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorReleaseInstancePublicConnection, ErrMessage
 	}
 	return Errmsg.SUCCESS, nil
 }

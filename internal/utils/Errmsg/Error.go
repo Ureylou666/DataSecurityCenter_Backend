@@ -30,6 +30,9 @@ const (
 	ErrorUnlockRDSAccount             = 404
 	ErrorUpdatePgsqlDetailsConnection = 405
 	ErrorUpdateMysqlDetailsConnection = 406
+	// API 相关
+	ErrorQueryInput = 2001
+	ErrorNotFound   = 2002
 )
 
 var CodeMsg = map[int]string{
@@ -56,6 +59,8 @@ var CodeMsg = map[int]string{
 	ErrorAllocateInstancePublicConnection: "Error Allocate Instance Public Connection",
 	ErrorModifySecurityIps:                "Error Modify Security Ips",
 	ErrorReleaseInstancePublicConnection:  "Error Release Instance Public Connection",
+	ErrorQueryInput:                       "Error Query Input",
+	ErrorNotFound:                         "Error Data Not Found",
 }
 
 func GetErrMsg(code int) string {

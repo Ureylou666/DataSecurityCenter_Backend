@@ -1,5 +1,6 @@
 package v1
 
+/*
 import (
 	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
@@ -39,3 +40,5 @@ func GetRules(c *gin.Context) {
 		"Res_Data":    resData,
 	})
 }
+
+*/

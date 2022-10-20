@@ -3,9 +3,9 @@ package Basic
 import (
 	"Backend/internal/application/aliyunSDK"
 	"Backend/internal/model/local"
-	"Backend/internal/utils"
 	"Backend/internal/utils/Errmsg"
 	rds20140815 "github.com/alibabacloud-go/rds-20140815/v2/client"
+	"github.com/google/uuid"
 )
 
 /*
@@ -94,7 +94,7 @@ func UpdateRDSInstanceDetails(CloudAccountID string, InstanceId string, client *
 	}
 	var input local.DataInventory
 	// 录入前先进行格式化数据 唯一id值 取为DBInstanceID hash
-	input.UUID = utils.StrToHash(*InstanceDetails.DBInstanceId)
+	input.UUID = uuid.New().String()
 	input.CreationTime = *InstanceDetails.CreationTime
 	input.CloudAccountID = CloudAccountID
 	input.RDSInstanceID = *InstanceDetails.DBInstanceId
@@ -140,6 +140,7 @@ func UpdateRDSAccount(InstanceID string, client *rds20140815.Client) (ErrCode in
 		} else {
 			input.AccountDescription = ""
 		}
+		input.UUID = uuid.New().String()
 		input.AccountStatus = *RDSAccountList[i].AccountStatus
 		input.RDSInstanceID = *RDSAccountList[i].DBInstanceId
 		input.AccountType = *RDSAccountList[i].AccountType
@@ -160,7 +161,7 @@ func UpdateDatabaseList(InstanceID string, client *rds20140815.Client) (ErrCode 
 	// 先删除 后更新
 	local.DeleteDatabase(InstanceID)
 	for i := 0; i < len(DatabaseList); i++ {
-		input.UUID = utils.StrToHash(*DatabaseList[i].DBInstanceId)
+		input.UUID = uuid.New().String()
 		input.InstanceID = *DatabaseList[i].DBInstanceId
 		if DatabaseList[i].DBDescription != nil {
 			input.Description = *DatabaseList[i].DBDescription

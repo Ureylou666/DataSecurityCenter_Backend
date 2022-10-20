@@ -2,11 +2,10 @@ package local
 
 import (
 	"Backend/internal/utils/Errmsg"
-	"gorm.io/gorm"
 )
 
 type RDSAccount struct {
-	gorm.Model
+	UUID               string `gorm:"type:varchar(50)" json:"Uuid"`
 	RDSInstanceID      string `gorm:"type:varchar(50)" json:"RDSInstanceID"`       //RDS实例ID
 	AccountDescription string `gorm:"type:varchar(200)" json:"AccountDescription"` //账号描述信息。
 	AccountStatus      string `gorm:"type:varchar(200)" json:"AccountStatus"`      //账号状态
@@ -34,5 +33,5 @@ func CheckAccountExist(RDSInstanceID string, AccountName string) bool {
 }
 
 func DeleteAccount(RDSInstanceID string, AccountName string) {
-	db.Where("db_instance_id = ? AND account_name = ?", RDSInstanceID, AccountName).Delete(&RDSAccount{})
+	db.Where("rds_instance_id = ? AND account_name = ?", RDSInstanceID, AccountName).Delete(&RDSAccount{})
 }

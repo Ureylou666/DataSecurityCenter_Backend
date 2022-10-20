@@ -2,6 +2,7 @@ package aliyunSDK
 
 import (
 	"Backend/internal/utils/Errmsg"
+	"fmt"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	sts20150401 "github.com/alibabacloud-go/sts-20150401/v2/client"
 	util "github.com/alibabacloud-go/tea-utils/v2/service"
@@ -49,9 +50,10 @@ func AssumeRole(accountId string) (ErrCode int, ErrMessage error, AccessKeyId st
 		runtime := &util.RuntimeOptions{}
 		assumeRoleResponse, ErrMessage := client.AssumeRoleWithOptions(assumeRoleRequest, runtime)
 		if ErrMessage != nil {
+			fmt.Println(accountId)
 			return Errmsg.ErrorAssumeRole, ErrMessage, "", "", ""
 		} else {
-			return Errmsg.SUCCESS, ErrMessage, *assumeRoleResponse.Body.Credentials.AccessKeyId, *assumeRoleResponse.Body.Credentials.AccessKeySecret, *assumeRoleResponse.Body.Credentials.SecurityToken
+			return Errmsg.SUCCESS, nil, *assumeRoleResponse.Body.Credentials.AccessKeyId, *assumeRoleResponse.Body.Credentials.AccessKeySecret, *assumeRoleResponse.Body.Credentials.SecurityToken
 
 		}
 	}

@@ -1,5 +1,6 @@
 package v1
 
+/*
 import (
 	"Backend/internal/application/Basic/aliyunSDDP"
 	"Backend/internal/model/local"
@@ -94,3 +95,6 @@ func InitGroupData(c *gin.Context) {
 		return
 	}
 }
+
+
+*/

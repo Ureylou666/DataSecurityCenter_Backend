@@ -5,7 +5,7 @@ import (
 )
 
 type DataDatabase struct {
-	UUID           string `gorm:"primaryKey" json:"UUID"`
+	UUID           string `gorm:"type:varchar(50)" json:"UUID"`
 	DepartName     string `gorm:"type:varchar(200)" json:"DepartName"`          //数据库实例所属部门的名称。
 	InstanceID     string `gorm:"type:varchar(50)" json:"RDSInstanceID"`        //数据库所属实例id
 	DatabaseName   string `gorm:"type:varchar(200)" json:"DatabaseName"`        //数据资产实例的名称。
@@ -18,6 +18,12 @@ type DataDatabase struct {
 	Sensitive      bool   `gorm:"type:boolean" json:"Sensitive"`                //数据资产实例中是否包含敏感数据。
 	SensitiveCount int    `gorm:"type:int" json:"SensitiveCount"`               //数据资产实例中包含的敏感数据总数。例如：当数据资产为RDS时，表示该实例中数据库的敏感总表数
 	TotalCount     int    `gorm:"type:int" json:"TotalCount"`                   //数据资产实例中的数据总数。例如：当数据资产为RDS时，表示该实例中数据库的总表数。
+}
+
+type DatabaseQueryInfo struct {
+	InstanceID string
+	PageNum    int
+	PageSize   int
 }
 
 // AddDatabase 新增RDS Instance下 Database信息
@@ -34,10 +40,23 @@ func DeleteDatabase(RDSInstance string) {
 	db.Where("instance_id = ?", RDSInstance).Delete(&DataDatabase{})
 }
 
-// GetDatabase 获取aliyun数据资产列表 并进行分页展示
+// GetDatabaseList 获取aliyun数据资产列表
 func GetDatabaseList(RDSInstance string) []DataDatabase {
 	var result []DataDatabase
 	// 获取数据库中Instance总数
 	db.Where("instance_id = ?", RDSInstance).Find(&result)
 	return result
+}
+
+// GetDatabaseAPI 查询返回aliyun Database列表
+func GetDatabaseAPI(query DatabaseQueryInfo) (result []DataDatabase, resTotal int64, DatabaseTotal int64) {
+	db.Where("instance_id = ?", query.InstanceID).Find(&result).Count(&DatabaseTotal)
+	if query.PageNum == 0 || query.PageSize == 0 {
+		db.Where("instance_id = ?", query.InstanceID).Limit(-1).Find(&result)
+		resTotal = int64(len(result))
+	} else {
+		db.Where("instance_id = ?", query.InstanceID).Limit(query.PageSize).Offset((query.PageNum - 1) * query.PageSize).Find(&result)
+		resTotal = int64(len(result))
+	}
+	return result, resTotal, DatabaseTotal
 }

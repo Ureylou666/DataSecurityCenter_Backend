@@ -7,18 +7,19 @@ import (
 	"net/http"
 )
 
-func GetTableList(c *gin.Context) {
-	var queryinfo local.TabelQueryInfo
+// GetRDSInventoryList 获取云账号列表
+func GetRDSInventoryList(c *gin.Context) {
+	var queryinfo local.RDSQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
-	// 判断用户输入 DatabaseName
-	if (err != nil) || (queryinfo.PageSize > 50) || queryinfo.DatabaseName == "" {
+	// 判断用户输入 AccountID
+	if (err != nil) || (queryinfo.PageSize > 50) || queryinfo.AccountID == "" {
 		c.JSON(http.StatusOK, gin.H{
 			"Code":    Errmsg.ErrorQueryInput,
 			"Message": Errmsg.GetErrMsg(Errmsg.ErrorQueryInput),
 		})
 		return
 	}
-	resData, resTotal, TableListTotal := local.GetTableList(queryinfo)
+	resData, resTotal, rdsInventoryTotal := local.GetRDSInventory(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -29,10 +30,10 @@ func GetTableList(c *gin.Context) {
 	}
 	// 正常恢复
 	c.JSON(http.StatusOK, gin.H{
-		"Code":           Errmsg.SUCCESS,
-		"Message":        Errmsg.GetErrMsg(Errmsg.SUCCESS),
-		"TableListTotal": TableListTotal,
-		"Res_Total":      resTotal,
-		"Res_Data":       resData,
+		"Code":              Errmsg.SUCCESS,
+		"Message":           Errmsg.GetErrMsg(Errmsg.SUCCESS),
+		"rdsInventoryTotal": rdsInventoryTotal,
+		"Res_Total":         resTotal,
+		"Res_Data":          resData,
 	})
 }

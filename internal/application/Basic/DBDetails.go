@@ -157,7 +157,7 @@ func UpdatePgsqlDetails(connectionString ConnectionString, InstanceID string, Da
 	if connectionString.SSLEnabled {
 		dsn = "host=" + connectionString.DbIPAddr + " user=" + connectionString.DbUser + " password=" + connectionString.DBPassword + " dbname=" + connectionString.DbName + " port=" + connectionString.DbPort + " sslmode=verify-ca sslrootcert=" + setting.SSLCert
 	} else {
-		dsn = "host=" + connectionString.DbIPAddr + " user=" + connectionString.DbUser + " password=" + connectionString.DBPassword + " dbname=" + connectionString.DbName + " port=" + connectionString.DbPort + " sslmode=disables"
+		dsn = "host=" + connectionString.DbIPAddr + " user=" + connectionString.DbUser + " password=" + connectionString.DBPassword + " dbname=" + connectionString.DbName + " port=" + connectionString.DbPort + " sslmode=disable"
 	}
 	// 创建数据库客户端
 	targetDB, ErrMessage := gorm.Open(postgres.Open(dsn), &gorm.Config{

@@ -3,8 +3,8 @@ package Basic
 import (
 	"Backend/internal/application/aliyunSDK"
 	"Backend/internal/model/local"
-	"Backend/internal/utils"
 	"Backend/internal/utils/Errmsg"
+	"github.com/google/uuid"
 )
 
 // UpdateCloudAccountList 初始化cloud账号
@@ -17,7 +17,7 @@ func UpdateCloudAccountList() (ErrCode int, ErrMessage error) {
 	}
 	// 数据入库
 	for i := 0; i < len(rawlistaccounts); i++ {
-		input.UUID = utils.StrToHash(*rawlistaccounts[i].DisplayName)
+		input.UUID = uuid.New().String()
 		if rawlistaccounts[i].Type != nil {
 			input.Type = *rawlistaccounts[i].Type
 		}

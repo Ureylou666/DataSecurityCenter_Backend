@@ -29,13 +29,11 @@ type DataInventory struct {
 	SensitiveCount          int    `gorm:"type:int" json:"SensitiveCount"`                  //实例下敏感数据库数量
 }
 
-// InventoryQueryInfo 定义api接口查询参数
-type InventoryQueryInfo struct {
-	GroupName    string
-	InstanceName string
-	InstanceType string
-	PageNum      int
-	PageSize     int
+// RDSQueryInfo 定义api接口查询参数
+type RDSQueryInfo struct {
+	AccountID string
+	PageNum   int
+	PageSize  int
 }
 
 // CheckInventoryExist 判断数据库中是否存在相关资产
@@ -68,24 +66,6 @@ func DeleteCloudInventory(CloudAccountID string) {
 	db.Where("cloud_account_id = ?", CloudAccountID).Delete(&DataInventory{})
 }
 
-// GetInventory 获取aliyun数据资产列表 并进行分页展示
-func GetInventory(query InventoryQueryInfo) ([]DataInventory, int64, int64) {
-	var result []DataInventory
-	var resTotal, inventoryTotal int64
-	// 获取数据库中Instance总数
-	// InstanceName 模糊搜索
-	// 分页处理
-	db.Where(&DataInventory{CloudAccountID: query.GroupName, RDSEngine: query.InstanceType}).Where("name like ?", "%"+query.InstanceName+"%").Find(&result).Limit(-1).Count(&inventoryTotal)
-	if query.PageNum == 0 || query.PageSize == 0 {
-		db.Where(&DataInventory{CloudAccountID: query.GroupName, RDSEngine: query.InstanceType}).Where("name like ?", "%"+query.InstanceName+"%").Order("total_count desc, name").Limit(-1).Find(&result)
-		resTotal = int64(len(result))
-	} else {
-		db.Where(&DataInventory{CloudAccountID: query.GroupName, RDSEngine: query.InstanceType}).Where("name like ?", "%"+query.InstanceName+"%").Order("total_count desc, name").Limit(query.PageSize).Offset((query.PageNum - 1) * query.PageSize).Find(&result)
-		resTotal = int64(len(result))
-	}
-	return result, resTotal, inventoryTotal
-}
-
 // GetAccountID 通过InstanceID获取
 func GetAccountID(InstanceID string) (CloudAccountID string) {
 	var result DataInventory
@@ -97,4 +77,22 @@ func GetAccountID(InstanceID string) (CloudAccountID string) {
 func GetConnectString(InstanceID string) (RdsDetails DataInventory) {
 	db.Where("rds_instance_id = ?", InstanceID).First(&RdsDetails)
 	return RdsDetails
+}
+
+// GetRDSInventory 获取aliyun RDS资产列表 并进行分页展示
+func GetRDSInventory(query RDSQueryInfo) ([]DataInventory, int64, int64) {
+	var result []DataInventory
+	var resTotal, inventoryTotal int64
+	// 获取数据库中Instance总数
+	// cloudaccountid 精确搜索
+	// 分页处理
+	db.Where("cloud_account_id = ?", query.AccountID).Find(&result).Count(&inventoryTotal)
+	if query.PageNum == 0 || query.PageSize == 0 {
+		db.Where("cloud_account_id = ?", query.AccountID).Limit(-1).Find(&result)
+		resTotal = int64(len(result))
+	} else {
+		db.Where("cloud_account_id = ?", query.AccountID).Limit(query.PageSize).Offset((query.PageNum - 1) * query.PageSize).Find(&result)
+		resTotal = int64(len(result))
+	}
+	return result, resTotal, inventoryTotal
 }

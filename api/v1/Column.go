@@ -13,14 +13,14 @@ func GetColumnDetails(c *gin.Context) {
 	if queryinfo.GroupName == "All" {
 		queryinfo.GroupName = ""
 	}
-	if queryinfo.RiskLevelName == "All" {
-		queryinfo.RiskLevelName = ""
+	if queryinfo.SensLevelName == "All" {
+		queryinfo.SensLevelName = ""
 	}
 	// 判断用户输入
-	if (err != nil) || (len(queryinfo.RuleName) > 50) || (queryinfo.PageSize > 50) {
+	if (err != nil) || (len(queryinfo.RuleName) > 50) || (queryinfo.PageSize > 100) {
 		c.JSON(http.StatusOK, gin.H{
 			"Code":    Errmsg.ERROR,
-			"Message": Errmsg.GetErrMsg(Errmsg.Error_QueryInfo),
+			"Message": Errmsg.GetErrMsg(Errmsg.ErrorQueryInput),
 		})
 		return
 	}
@@ -28,8 +28,8 @@ func GetColumnDetails(c *gin.Context) {
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"Code":    Errmsg.Error_NotFound,
-			"Message": Errmsg.GetErrMsg(Errmsg.Error_NotFound),
+			"Code":    Errmsg.ErrorNotFound,
+			"Message": Errmsg.GetErrMsg(Errmsg.ErrorNotFound),
 		})
 		return
 	}
@@ -43,23 +43,24 @@ func GetColumnDetails(c *gin.Context) {
 	})
 }
 
+// GetColumns 通过table获取column
 func GetColumns(c *gin.Context) {
-	var queryinfo local.ColumnsQueryInfo
+	var queryinfo local.QueryFromTable
 	err := c.ShouldBindJSON(&queryinfo)
 	// 判断用户输入
 	if err != nil || queryinfo.TableName == "" || queryinfo.PageSize > 50 {
 		c.JSON(http.StatusOK, gin.H{
-			"Code":    Errmsg.ERROR,
-			"Message": Errmsg.GetErrMsg(Errmsg.Error_QueryInfo),
+			"Code":    Errmsg.ErrorQueryInput,
+			"Message": Errmsg.GetErrMsg(Errmsg.ErrorQueryInput),
 		})
 		return
 	}
-	resData, resTotal, columnTotal := local.GetTableColumn(queryinfo)
+	resData, resTotal, columnTotal := local.GetColumnFromTable(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
-			"Code":    Errmsg.Error_NotFound,
-			"Message": Errmsg.GetErrMsg(Errmsg.Error_NotFound),
+			"Code":    Errmsg.SUCCESS,
+			"Message": Errmsg.GetErrMsg(Errmsg.ErrorNotFound),
 		})
 		return
 	}

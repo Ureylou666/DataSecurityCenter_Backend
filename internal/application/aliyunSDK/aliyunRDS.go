@@ -174,7 +174,7 @@ func DeleteAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, 
 	setting.LoadAuditAccount()
 	deleteAccountRequest := &rds20140815.DeleteAccountRequest{
 		DBInstanceId: tea.String(InstanceId),
-		AccountName:  tea.String(setting.AccountName),
+		AccountName:  tea.String("cnisdp"),
 	}
 	runtime := &util.RuntimeOptions{
 		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。

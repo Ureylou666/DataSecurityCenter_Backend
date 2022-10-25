@@ -71,7 +71,7 @@ func UpdateRDSInstanceList(CloudAccountID string, client *rds20140815.Client) (E
 				return previousCode, previousMsg
 			}
 			// 更新RDS下所有DB详情 如果有只读实例 则跳过
-			if len(RDSInstanceList[i].ReadOnlyDBInstanceIds.ReadOnlyDBInstanceId) == 0 {
+			if *RDSInstanceList[i].DBInstanceId != "pgr-uf6071l2921o51jj" {
 				previousCode, previousMsg = UpdateDBDetails(*RDSInstanceList[i].DBInstanceId)
 			}
 			if previousCode != Errmsg.SUCCESS {

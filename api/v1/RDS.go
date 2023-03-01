@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"Backend/internal/application/Basic"
 	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
@@ -12,14 +13,14 @@ func GetRDSInventoryList(c *gin.Context) {
 	var queryinfo local.RDSQueryInfo
 	err := c.ShouldBindJSON(&queryinfo)
 	// 判断用户输入 AccountID
-	if (err != nil) || (queryinfo.PageSize > 50) || queryinfo.AccountID == "" {
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"Code":    Errmsg.ErrorQueryInput,
 			"Message": Errmsg.GetErrMsg(Errmsg.ErrorQueryInput),
 		})
 		return
 	}
-	resData, resTotal, rdsInventoryTotal := local.GetRDSInventory(queryinfo)
+	resData, resTotal, rdsInventoryTotal := Basic.GeTRDSInventoryList(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{

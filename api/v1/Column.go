@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"Backend/internal/application/Basic"
 	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
@@ -17,14 +18,14 @@ func GetColumnDetails(c *gin.Context) {
 		queryinfo.SensLevelName = ""
 	}
 	// 判断用户输入
-	if (err != nil) || (len(queryinfo.RuleName) > 50) || (queryinfo.PageSize > 100) {
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"Code":    Errmsg.ERROR,
 			"Message": Errmsg.GetErrMsg(Errmsg.ErrorQueryInput),
 		})
 		return
 	}
-	resData, resTotal, columnTotal := local.GetColumnDetails(queryinfo)
+	resData, resTotal, columnTotal := Basic.GetColumnDetails(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -55,7 +56,7 @@ func GetColumns(c *gin.Context) {
 		})
 		return
 	}
-	resData, resTotal, columnTotal := local.GetColumnFromTable(queryinfo)
+	resData, resTotal, columnTotal := Basic.GetColumnsFromTable(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{

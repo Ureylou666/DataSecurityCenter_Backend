@@ -5,7 +5,26 @@ import (
 	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/google/uuid"
+	"regexp"
 )
+
+func GetCloudAccountList(input local.CloudAccountQueryInfo) (result []local.CloudAccount, resTotal int64, AccountListTotal int64) {
+	// 输入校验 GroupName只能为字母或数字
+	validation := true
+	if input.GroupName != "" {
+		validation, _ = regexp.MatchString("^[A-Za-z0-9]+$", input.GroupName)
+	}
+	if validation {
+		// 输入校验 PageSize不能大于 50
+		if input.PageSize > 50 {
+			validation = false
+		}
+	}
+	if !validation {
+		return nil, 0, 0
+	}
+	return local.GetCloudAccountList(input)
+}
 
 // UpdateCloudAccountList 初始化cloud账号
 func UpdateCloudAccountList() (ErrCode int, ErrMessage error) {

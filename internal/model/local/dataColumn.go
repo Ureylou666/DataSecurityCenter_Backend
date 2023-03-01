@@ -23,6 +23,7 @@ type DataColumn struct {
 type ColumnDetailsQueryInfo struct {
 	GroupName     string
 	SensLevelName string
+	CategoryName  string
 	RuleName      string
 	PageNum       int
 	PageSize      int
@@ -67,11 +68,15 @@ func GetColumnDetails(query ColumnDetailsQueryInfo) ([]DataColumn, int64, int64)
 	var resTotal, columnTotal int64
 	query.RuleName = "%" + query.RuleName + "%"
 	query.GroupName = "%" + query.GroupName + "%"
-	query.SensLevelName = "%" + query.SensLevelName + "%"
+	if query.SensLevelName != "" {
+		query.SensLevelName = "%" + query.SensLevelName + "%"
+	} else {
+		query.SensLevelName = "%S%"
+	}
 	// 分页处理
 	db.Table("(?) as Y", db.Table("(?) as X", db.Model(DataColumn{}).Where("group_name like ?", query.GroupName)).Where("sens_level_name like ?", query.SensLevelName)).Where("rule_name like ?", query.RuleName).Find(&result).Count(&columnTotal)
 	if query.PageNum == 0 || query.PageSize == 0 {
-		db.Table("(?) as Y", db.Table("(?) as X", db.Model(DataColumn{}).Where("group_name like ?", query.GroupName)).Where("sens_level_name like ?", query.SensLevelName)).Where("rule_name like ?", query.RuleName).Limit(-1).Order("sens_level_name desc").Find(&result)
+		db.Table("(?) as Y", db.Table("(?) as X", db.Model(DataColumn{}).Where("group_name like ?", query.GroupName)).Where("sens_level_name like ?", query.SensLevelName)).Where("rule_name like ? ", query.RuleName).Order("sens_level_name desc").Limit(-1).Find(&result)
 		resTotal = int64(len(result))
 	} else {
 		db.Table("(?) as Y", db.Table("(?) as X", db.Model(DataColumn{}).Where("group_name like ?", query.GroupName)).Where("sens_level_name like ?", query.SensLevelName)).Where("rule_name like ?", query.RuleName).Order("sens_level_name desc").Limit(query.PageSize).Offset((query.PageNum - 1) * query.PageSize).Find(&result)
@@ -82,5 +87,14 @@ func GetColumnDetails(query ColumnDetailsQueryInfo) ([]DataColumn, int64, int64)
 
 func DeleteColumnData(InstanceID string, DatabaseName string) {
 	db.Where("instance_id = ? and database_name = ? ", InstanceID, DatabaseName).Delete(&DataColumn{})
+}
 
+func CountColumns() int {
+	var result int64
+	db.Find(&DataColumn{}).Count(&result)
+	return int(result)
+}
+
+func MappingUpdate(columnuuid string, rulename string, categoryname string, sensitive_level string) {
+	db.Where("uuid = ?", columnuuid).Updates(DataColumn{RuleName: rulename, CategoryName: categoryname, SensLevelName: sensitive_level})
 }

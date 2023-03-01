@@ -86,6 +86,17 @@ func GetRDSInventory(query RDSQueryInfo) ([]DataInventory, int64, int64) {
 	// 获取数据库中Instance总数
 	// cloudaccountid 精确搜索
 	// 分页处理
+	if query.AccountID == "" {
+		db.Find(&result).Count(&inventoryTotal)
+		if query.PageNum == 0 || query.PageSize == 0 {
+			db.Limit(-1).Find(&result)
+			resTotal = int64(len(result))
+		} else {
+			db.Limit(query.PageSize).Offset((query.PageNum - 1) * query.PageSize).Find(&result)
+			resTotal = int64(len(result))
+		}
+		return result, resTotal, inventoryTotal
+	}
 	db.Where("cloud_account_id = ?", query.AccountID).Find(&result).Count(&inventoryTotal)
 	if query.PageNum == 0 || query.PageSize == 0 {
 		db.Where("cloud_account_id = ?", query.AccountID).Limit(-1).Find(&result)

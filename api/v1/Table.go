@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"Backend/internal/application/Basic"
 	"Backend/internal/model/local"
 	"Backend/internal/utils/Errmsg"
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ func GetTableList(c *gin.Context) {
 		})
 		return
 	}
-	resData, resTotal, TableListTotal := local.GetTableList(queryinfo)
+	resData, resTotal, TableListTotal := Basic.GetTableList(queryinfo)
 	// 未获取到对应数据
 	if resData == nil {
 		c.JSON(http.StatusOK, gin.H{

@@ -23,6 +23,7 @@ const (
 	ErrorAllocateInstancePublicConnection = 311
 	ErrorModifySecurityIps                = 312
 	ErrorReleaseInstancePublicConnection  = 313
+	ErrorDescribeDBInstanceIPArrayList    = 314
 	// aliyun UpdateDBDetails 模块报错
 	ErrorCheckInventoryExist          = 401
 	ErrorCheckAccountExist            = 402
@@ -30,9 +31,11 @@ const (
 	ErrorUnlockRDSAccount             = 404
 	ErrorUpdatePgsqlDetailsConnection = 405
 	ErrorUpdateMysqlDetailsConnection = 406
+	// Category 模块报错
 	// API 相关
 	ErrorQueryInput = 2001
 	ErrorNotFound   = 2002
+	ErrorCreate     = 2003
 )
 
 var CodeMsg = map[int]string{
@@ -61,6 +64,8 @@ var CodeMsg = map[int]string{
 	ErrorReleaseInstancePublicConnection:  "Error Release Instance Public Connection",
 	ErrorQueryInput:                       "Error Query Input",
 	ErrorNotFound:                         "Error Data Not Found",
+	ErrorDescribeDBInstanceIPArrayList:    "Error Describe DBInstance IPArrayList",
+	ErrorCreate:                           "Error in Creation",
 }
 
 func GetErrMsg(code int) string {

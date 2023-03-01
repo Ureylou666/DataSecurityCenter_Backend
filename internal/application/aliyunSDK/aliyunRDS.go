@@ -282,6 +282,25 @@ func ModifySecurityIps(InstanceId string, ModifyMode string, client *rds20140815
 	return Errmsg.SUCCESS, nil
 }
 
+// DescribeDBInstanceIPArrayList 查询RDS实例IP白名单
+func DescribeDBInstanceIPArrayList(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, WhitelistArray []*rds20140815.DescribeDBInstanceIPArrayListResponseBodyItemsDBInstanceIPArray) {
+	describeDBInstanceIPArrayListRequest := &rds20140815.DescribeDBInstanceIPArrayListRequest{
+		DBInstanceId: tea.String(InstanceId),
+	}
+	runtime := &util.RuntimeOptions{
+		// 超时设置，该产品部分接口调用比较慢，请您适当调整超时时间。
+		ReadTimeout:    tea.Int(50000),
+		ConnectTimeout: tea.Int(50000),
+	}
+	// 复制代码运行请自行打印 API 的返回值
+	response, ErrMessage := client.DescribeDBInstanceIPArrayListWithOptions(describeDBInstanceIPArrayListRequest, runtime)
+	if ErrMessage != nil {
+		return Errmsg.ErrorDescribeDBInstanceIPArrayList, ErrMessage, nil
+	}
+	WhitelistArray = response.Body.Items.DBInstanceIPArray
+	return Errmsg.SUCCESS, nil, WhitelistArray
+}
+
 // ReleaseInstancePublicConnection 释放实例的外网连接地址
 func ReleaseInstancePublicConnection(InstanceId string, PublicConnectionString string, client *rds20140815.Client) (ErrCode int, ErrMessage error) {
 	releaseInstancePublicConnectionRequest := &rds20140815.ReleaseInstancePublicConnectionRequest{

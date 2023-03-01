@@ -20,6 +20,20 @@ func InitRouter() {
 	api.POST("/Inventory/Column", v1.GetColumns)
 	// Home Page > Data Security > Identification > DataField
 	api.POST("/DataFields", v1.GetColumnDetails)
+	// Home Page > Data Security > Configuration > Category
+	api.POST("/Category/Create", v1.NewCategory)
+	api.POST("/Category/Delete", v1.DeleteCategory)
+	api.POST("/Category/Update", v1.UpdateCategory)
+	api.POST("/Category/List", v1.ListCategory)
+	api.GET("/Category/All", v1.ListCategoryName)
+	// Home Page > Data Security > Configuration > Rules
+	api.POST("/Rules/Create", v1.NewRule)
+	api.POST("/Rules/Delete", v1.DeleteRule)
+	api.POST("/Rules/Update", v1.UpdateRule)
+	api.POST("/Rules/List", v1.ListRules)
+	api.POST("/Rules/Enforce", v1.EnforceRule)
+	api.GET("/Rules/:RuleUUID", v1.GetRule)
+
 	/*
 		// 数据安全 > 存储阶段 > 数据资产 Inventory模块
 		api.POST("/inventory", v1.GetInventory)

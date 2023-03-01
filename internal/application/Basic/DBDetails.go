@@ -20,6 +20,7 @@ import (
 	"gorm.io/gorm/schema"
 	"io/ioutil"
 	"log"
+	"time"
 )
 
 type ConnectionString struct {
@@ -39,8 +40,6 @@ func UpdateDBDetails(InstanceID string) (ErrCode int, ErrMessage error) {
 	if local.CheckInventoryExist(InstanceID) != true {
 		return Errmsg.ErrorCheckInventoryExist, errors.New(Errmsg.GetErrMsg(Errmsg.ErrorCheckInventoryExist))
 	}
-	// RDSInstanceID存在 则可以使用sdk 解锁审计账号cnisdp
-	// 创建aliyunRDS客户端
 	// 获取CloudAccountID
 	CloudAccountId := local.GetAccountID(InstanceID)
 	// 获取连接所需的数据库列表, 因为要获取数据库类型，故前置处理
@@ -50,19 +49,39 @@ func UpdateDBDetails(InstanceID string) (ErrCode int, ErrMessage error) {
 	if previousCode != Errmsg.SUCCESS {
 		return previousCode, previousMsg
 	}
-	// 删除审计账户
-	_, _ = aliyunSDK.DeleteAccount(InstanceID, RDSClient)
-	// 密码为随机生成的25位数字、 大小写字母、特殊字符字符串
-	TempPasswd := utils.GeneratePassword()
-	previousCode, previousMsg = InitRDSAccount(InstanceID, DbList[0].Engine, TempPasswd, RDSClient)
-	if previousCode != Errmsg.SUCCESS {
-		return previousCode, previousMsg
+	// 初始化连接字符串
+	previousCode, previousMsg, DbConnectionString, PublicAddr := CheckDBPublicString(InstanceID, RDSClient)
+	SetPublicAddr := !PublicAddr
+	for !PublicAddr {
+		previousCode, previousMsg, DbConnectionString = InitDBConnection(InstanceID, RDSClient)
+		// 暂停30s
+		time.Sleep(30000000000)
+		previousCode, previousMsg, DbConnectionString, PublicAddr = CheckDBPublicString(InstanceID, RDSClient)
 	}
+	// 初始化审计账号
+	previousCode, previousMsg, AuditAccountReady := CheckRDSAccount(InstanceID, RDSClient)
 	setting.LoadAuditAccount()
-	// 获取连接rds connection string
-	previousCode, previousMsg, DbConnectString, NewPublicAddr := InitDBConnection(InstanceID, RDSClient)
-	if previousCode != Errmsg.SUCCESS {
-		return previousCode, previousMsg
+	for !AuditAccountReady {
+		// 密码为随机生成的25位数字、 大小写字母、特殊字符字符串
+		TempPasswd := utils.GeneratePassword()
+		previousCode, previousMsg = InitRDSAccount(InstanceID, DbList[0].Engine, TempPasswd, RDSClient)
+		DbConnectionString.DbName = setting.AccountName
+		DbConnectionString.DBPassword = TempPasswd
+		if previousCode != Errmsg.SUCCESS {
+			return previousCode, previousMsg
+		}
+		// 暂停15s
+		time.Sleep(15000000000)
+		// check 是否创建成功
+		previousCode, previousMsg, AuditAccountReady = CheckRDSAccount(InstanceID, RDSClient)
+	}
+	// 初始化RDS白名单
+	previousCode, previousMsg, DSCWhitelist := CheckRDSWhiteList(InstanceID, RDSClient)
+	for !DSCWhitelist {
+		previousCode, previousMsg = InitRDSWhiteList(InstanceID, RDSClient, "Append")
+		// 暂停15s
+		time.Sleep(15000000000)
+		previousCode, previousMsg, DSCWhitelist = CheckRDSWhiteList(InstanceID, RDSClient)
 	}
 	// 遍历连接每一个数据库 获取table及column信息
 	for i := 0; i < len(DbList); i++ {
@@ -71,44 +90,80 @@ func UpdateDBDetails(InstanceID string) (ErrCode int, ErrMessage error) {
 		local.DeleteColumnData(InstanceID, DbList[i].DatabaseName)
 		local.DeleteSampleData(InstanceID, DbList[i].DatabaseName)
 		// 初始化连接字符串
-		DbConnectString.DbName = DbList[i].DatabaseName
-		DbConnectString.DbUser = setting.AccountName
-		DbConnectString.DBPassword = TempPasswd
-		// 获取域名解析记录
-		_, _, DbConnectString.DbHost, DbConnectString.DbIPAddr = aliyunSDK.DescribeDBInstanceNetInfo(InstanceID, RDSClient)
+		DbConnectionString.DbName = DbList[i].DatabaseName
+		DbConnectionString.DbUser = "cnisdp"
 		// 对不同类型数据库 分别update
 		switch DbList[i].Engine {
 		case "PostgreSQL":
 			{
-				previousCode, previousMsg = UpdatePgsqlDetails(DbConnectString, InstanceID, DbList[i].DatabaseName)
+				previousCode, previousMsg = UpdatePgsqlDetails(DbConnectionString, InstanceID, DbList[i].DatabaseName)
 			}
 		case "MySQL":
 			{
 				previousCode, previousMsg = aliyunSDK.GrantAccountPrivilege(InstanceID, DbList[i].DatabaseName, RDSClient)
-				previousCode, previousMsg = UpdateMysqlDetails(DbConnectString, InstanceID, DbList[i].DatabaseName)
+				previousCode, previousMsg = UpdateMysqlDetails(DbConnectionString, InstanceID, DbList[i].DatabaseName)
 			}
 		case "SQLServer":
 			{
 				previousCode, previousMsg = aliyunSDK.GrantAccountPrivilege(InstanceID, DbList[i].DatabaseName, RDSClient)
-				previousCode, previousMsg = UpdateSqlServerDetails(DbConnectString, InstanceID, DbList[i].DatabaseName)
+				previousCode, previousMsg = UpdateSqlServerDetails(DbConnectionString, InstanceID, DbList[i].DatabaseName)
 			}
 		}
+		fmt.Println(InstanceID, " ", DbList[i].DatabaseName, " done;")
 	}
-	// 删除审计账户
-	previousCode, previousMsg = aliyunSDK.DeleteAccount(InstanceID, RDSClient)
+	CleanField(InstanceID, RDSClient, SetPublicAddr, DbConnectionString.DbHost)
 	if previousCode != Errmsg.SUCCESS {
 		return previousCode, previousMsg
 	}
-	// 删除白名单
-	previousCode, previousMsg = aliyunSDK.ModifySecurityIps(InstanceID, "Delete", RDSClient)
-	// 释放外网地址
-	if NewPublicAddr {
-		previousCode, previousMsg = aliyunSDK.ReleaseInstancePublicConnection(InstanceID, DbConnectString.DbHost, RDSClient)
-	}
+	fmt.Println(InstanceID, " done;")
 	return Errmsg.SUCCESS, nil
 }
 
-// InitRDSAccount 解锁数据库账号, 无账号则会进行创建
+// CleanField 退出机制，写成单独方法 方便进行调用
+func CleanField(InstanceId string, client *rds20140815.Client, SetPublicAddr bool, PublicConnectionString string) {
+	// 删除审计账号
+	AuditAccount := true
+	for AuditAccount {
+		_, _ = aliyunSDK.DeleteAccount(InstanceId, client)
+		// 暂停15s
+		time.Sleep(15000000000)
+		_, _, AuditAccount = CheckRDSAccount(InstanceId, client)
+	}
+	// 删除白名单地址
+	DSCWhitelist := true
+	for DSCWhitelist {
+		_, _ = InitRDSWhiteList(InstanceId, client, "Delete")
+		// 暂停15s
+		time.Sleep(15000000000)
+		_, _, DSCWhitelist = CheckRDSWhiteList(InstanceId, client)
+	}
+	// 释放外网地址
+	if SetPublicAddr {
+		Public := true
+		for Public {
+			_, _ = aliyunSDK.ReleaseInstancePublicConnection(InstanceId, PublicConnectionString, client)
+			// 暂停15s
+			time.Sleep(30000000000)
+			_, _, _, Public = CheckDBPublicString(InstanceId, client)
+		}
+	}
+}
+
+// CheckRDSAccount 检测审计账号是否创建成功，删除成功
+func CheckRDSAccount(InstanceId string, client *rds20140815.Client) (ErrCode int, ErrMessage error, AuditAccount bool) {
+	previousCode, previousMsg, RDSAccount := aliyunSDK.DescribeRDSAccount(InstanceId, client)
+	if previousCode != Errmsg.SUCCESS {
+		return previousCode, previousMsg, false
+	}
+	for i := 0; i < len(RDSAccount); i++ {
+		if *RDSAccount[i].AccountName == "cnisdp" {
+			return Errmsg.SUCCESS, nil, true
+		}
+	}
+	return Errmsg.SUCCESS, nil, false
+}
+
+// InitRDSAccount 初始化创建审计账号
 func InitRDSAccount(InstanceID string, DbEngine string, TempPasswd string, RDSClient *rds20140815.Client) (ErrCode int, ErrMessage error) {
 	// 创建rds account
 	previousCode, previousMsg := aliyunSDK.CreateRDSAccount(InstanceID, DbEngine, TempPasswd, RDSClient)
@@ -118,31 +173,53 @@ func InitRDSAccount(InstanceID string, DbEngine string, TempPasswd string, RDSCl
 	return Errmsg.SUCCESS, nil
 }
 
-// InitDBConnection 判断数据库连接
-func InitDBConnection(InstanceID string, RDSClient *rds20140815.Client) (ErrCode int, ErrMessage error, DbConnectString ConnectionString, NewPublicAddr bool) {
-	var RDSDetails local.DataInventory
+// CheckDBPublicString 判断公网地址是否开放
+func CheckDBPublicString(InstanceID string, RDSClient *rds20140815.Client) (ErrCode int, ErrMessage error, DbConnectString ConnectionString, PublicAddr bool) {
+	ErrCode, ErrMessage, DbConnectString.DbHost, DbConnectString.DbIPAddr = aliyunSDK.DescribeDBInstanceNetInfo(InstanceID, RDSClient)
+	if DbConnectString.DbHost != "" {
+		// 赋值基本信息
+		RDSDetails := local.GetConnectString(InstanceID)
+		// 赋值
+		DbConnectString.Db = RDSDetails.RDSEngine
+		DbConnectString.DbPort = RDSDetails.RDSConnectionPort
+		// 存在外网地址 判断是否开启了ssl； 不存在则创建外网连接地址
+		DbConnectString.SSLEnabled = RDSDetails.SSLEnabled
+		return Errmsg.SUCCESS, nil, DbConnectString, true
+	}
+	return Errmsg.SUCCESS, nil, DbConnectString, false
+}
+
+// InitDBConnection 判断并新建数据库连接字符串
+func InitDBConnection(InstanceID string, RDSClient *rds20140815.Client) (ErrCode int, ErrMessage error, DbConnectString ConnectionString) {
 	// 赋值基本信息
-	RDSDetails = local.GetConnectString(InstanceID)
+	RDSDetails := local.GetConnectString(InstanceID)
 	// 赋值
 	DbConnectString.Db = RDSDetails.RDSEngine
 	DbConnectString.DbPort = RDSDetails.RDSConnectionPort
-	NewPublicAddr = false
-	// 查询并判断是否存在外网地址
-	ErrCode, ErrMessage, DbConnectString.DbHost, _ = aliyunSDK.DescribeDBInstanceNetInfo(InstanceID, RDSClient)
-	if ErrMessage != nil {
-		return ErrCode, ErrMessage, DbConnectString, NewPublicAddr
+	// 创建外网连接地址
+	ErrCode, ErrMessage, DbConnectString.DbHost = aliyunSDK.AllocateInstancePublicConnection(InstanceID, DbConnectString.DbPort, RDSClient)
+	return Errmsg.SUCCESS, nil, DbConnectString
+}
+
+// CheckRDSWhiteList Check当前RDS白名单中是否还存在cnisdp
+func CheckRDSWhiteList(InstanceID string, RDSClient *rds20140815.Client) (ErrCode int, ErrMessage error, DSCWhitelist bool) {
+	ErrCode, ErrMessage, WhitelistArray := aliyunSDK.DescribeDBInstanceIPArrayList(InstanceID, RDSClient)
+	for i := 0; i < len(WhitelistArray); i++ {
+		if *WhitelistArray[i].DBInstanceIPArrayName == "cnisdp" {
+			DSCWhitelist = true
+		}
 	}
-	// 存在外网地址 判断是否开启了ssl； 不存在则创建外网连接地址
-	if DbConnectString.DbHost != "" {
-		DbConnectString.SSLEnabled = RDSDetails.SSLEnabled
-	} else {
-		// 创建外网连接地址
-		ErrCode, ErrMessage, DbConnectString.DbHost = aliyunSDK.AllocateInstancePublicConnection(InstanceID, DbConnectString.DbPort, RDSClient)
-		NewPublicAddr = true
-	}
+	return Errmsg.SUCCESS, nil, DSCWhitelist
+}
+
+// InitRDSWhiteList 初始化外网访问白名单 开启method = Append 关闭 method = Delete
+func InitRDSWhiteList(InstanceID string, RDSClient *rds20140815.Client, Method string) (ErrCode int, ErrMessage error) {
 	// 开启外网访问白名单
-	ErrCode, ErrMessage = aliyunSDK.ModifySecurityIps(InstanceID, "Append", RDSClient)
-	return Errmsg.SUCCESS, nil, DbConnectString, NewPublicAddr
+	ErrCode, ErrMessage = aliyunSDK.ModifySecurityIps(InstanceID, Method, RDSClient)
+	if ErrMessage != nil {
+		return ErrCode, ErrMessage
+	}
+	return Errmsg.SUCCESS, nil
 }
 
 // UpdatePgsqlDetails 更新pgsql 详情
@@ -184,10 +261,12 @@ func UpdatePgsqlDetails(connectionString ConnectionString, InstanceID string, Da
 			// 初始化sampleData
 			columnSampleData := make([]interface{}, 10)
 			inputSampleData := new(local.DataSample)
-			targetDB.Table(TableName[i].(string)).Distinct(ColumnName[j].(string)).Limit(10).Scan(&columnSampleData)
+			// 此处可能存在sql注入！！！
+			temp := ColumnName[j].(string) + " is not null"
+			targetDB.Table(TableName[i].(string)).Where(temp).Distinct(ColumnName[j].(string)).Limit(10).Scan(&columnSampleData)
 			targetDB.Raw("select data_type from information_schema.columns where table_name = ? and column_name =?", TableName[i].(string), ColumnName[j].(string)).Scan(&columnDataType)
 			// 当该列中有数据 才有意义进行更新数据列
-			if columnSampleData[0] != nil {
+			if (columnSampleData[0] != nil) && (columnSampleData[0] != "") {
 				inputColumn.UUID = uuid.New().String()
 				inputColumn.DataType = columnDataType[0].(string)
 				inputColumn.InstanceId = InstanceID
@@ -261,7 +340,7 @@ func UpdateMysqlDetails(connectionString ConnectionString, InstanceID string, Da
 			inputColumn.TableName = TableName
 			inputColumn.ColumnName = ColumnName
 			inputColumn.DataType = DataType
-			// 获取每一列的sample data
+			// 获取每一列的sample data 容易存在注入
 			sqlStrSampleData := "select distinct " + ColumnName + " from " + TableName + " where " + ColumnName + " is not NULL limit 10"
 			SampleDataRows, _ := targetDb.Query(sqlStrSampleData)
 			// 初始化sampleData
@@ -272,6 +351,7 @@ func UpdateMysqlDetails(connectionString ConnectionString, InstanceID string, Da
 			inputSampleData.TableName = TableName
 			i := 0
 			SampleData := make([]interface{}, 10)
+			// 待更新
 			for SampleDataRows.Next() {
 				SampleDataRows.Scan(&SampleData[i])
 				switch i {
@@ -363,11 +443,12 @@ func UpdateSqlServerDetails(connectionString ConnectionString, InstanceID string
 				// 初始化sampleData
 				columnSampleData := make([]interface{}, 10)
 				inputSampleData := new(local.DataSample)
-				querySql := "SELECT DISTINCT TOP 10 " + ColumnName[j].(string) + " FROM [" + inputTable.DatabaseName + "]" + ".dbo." + TableName[i].(string) + " WHERE " + ColumnName[j].(string) + " is not NULL"
+				querySql := "SELECT DISTINCT TOP 10 cast(" + ColumnName[j].(string) + " as varchar(max)) as tempdata FROM [" + inputTable.DatabaseName + "]" + ".dbo." + TableName[i].(string) + " WHERE " + ColumnName[j].(string) + " is not NULL"
 				targetDB.Raw(querySql).Scan(&columnSampleData)
-				targetDB.Raw("select DATA_TYPE from information_schema.columns where TABLE_NAME = ? and COLUMN_NAME =?", TableName[i].(string), ColumnName[j].(string)).Scan(&columnDataType)
+				querySql = "select DATA_TYPE from information_schema.columns where TABLE_NAME = " + "'" + TableName[i].(string) + "' and COLUMN_NAME = '" + ColumnName[j].(string) + "'"
+				targetDB.Raw(querySql).Scan(&columnDataType)
 				// 更新数据列, 只有存在数据的列才有意义
-				if columnSampleData[0] != nil {
+				if (columnSampleData[0] != nil) && (columnSampleData[0] != "") {
 					inputColumn.UUID = uuid.New().String()
 					inputColumn.DataType = columnDataType[0].(string)
 					inputColumn.InstanceId = InstanceID

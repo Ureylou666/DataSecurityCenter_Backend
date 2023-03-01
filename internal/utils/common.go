@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"math/big"
+	"regexp"
 	"strconv"
 )
 
@@ -60,6 +61,13 @@ func InterfaceToString(value interface{}) string {
 		key = value.(string)
 	case []byte:
 		key = string(value.([]byte))
+	}
+	// 删除key中非utf8字符
+	key = regexp.MustCompile(`[^\p{Han}[:print:]]`).ReplaceAllString(key, "")
+	key = regexp.MustCompile(`\s+`).ReplaceAllString(key, " ")
+	// 截取key长度
+	if len(key) > 5000 {
+		key = key[:5000]
 	}
 	return key
 }
